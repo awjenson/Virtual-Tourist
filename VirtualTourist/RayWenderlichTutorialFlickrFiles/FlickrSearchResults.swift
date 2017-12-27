@@ -22,7 +22,7 @@
 
 import Foundation
 
-// A struct which wraps up a search term and the results found for that search.
+// *** This class should probably be deleted since we now have Core Data Model Entity
 
 struct FlickrSearchResults {
     let searchLatitude : Double

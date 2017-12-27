@@ -1,27 +1,16 @@
-/**
- * Copyright (c) 2016 Razeware LLC
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-	
-import UIKit
+//
+//  Flickr.swift
+//  VirtualTourist
+//
+//  Created by Andrew Jenson on 12/12/17.
+//  Copyright © 2017 Andrew Jenson. All rights reserved.
+//
+// Sources:
+// Core Data: https://www.raywenderlich.com/173972/getting-started-with-core-data-tutorial-2
+// Core Data: https://www.udemy.com/ios-11-app-development-bootcamp/learn/v4/t/lecture/8790828?start=0
 
+import UIKit
+import CoreData
 
 class Flickr {
 
@@ -33,6 +22,12 @@ class Flickr {
         }
         return Singleton.sharedInstance
     }
+
+    // MARK: - Properties
+
+    var pinArrayCoreData = [Pin]()
+    var photoArrayCoreData = [Photo]()
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
 
     // MARK: Flickr API (URL Set-up)
@@ -171,14 +166,13 @@ class Flickr {
                     return
                 }
 
-
-
                 /* GUARD: Is the "photo" key in photosDictionary? */
                 guard let photoArray = photosDictionary[Constants.FlickrResponseKeys.Photo] as? [[String: AnyObject]] else {
                     sendError("Cannot find key '\(Constants.FlickrResponseKeys.Photo)' in \(photosDictionary)")
                     return
                 }
-                
+
+
                 // Create an empty array of FlickrPhoto
                 var flickrPhotos = [FlickrPhoto]()
 
@@ -196,14 +190,36 @@ class Flickr {
                             break
                     }
 
+//                    guard let image = UIImage(data: imageData) else {
+//                        break
+//                    }
+//
+//                    flickrPhoto.thumbnail = image
+//                    print("Photos to be displayed: \(String(describing: flickrPhoto.thumbnail))")
+//                    // Append photos to array of FlickrPhoto
+//                    flickrPhotos.append(flickrPhoto)
+
                     if let image = UIImage(data: imageData) {
                         flickrPhoto.thumbnail = image
                         print("Photos to be displayed: \(String(describing: flickrPhoto.thumbnail))")
                         // Append photos to array of FlickrPhoto
                         flickrPhotos.append(flickrPhoto)
+
+                        // Core Data ***
+                        let newPhoto = Photo(context: self.context)
+                        newPhoto.image = imageData
+                        newPhoto.parentPin = self.selectedPin
+                        self.photoArrayCoreData.append(newPhoto)
+                        print("")
+                        print("newPhoto.image: \(newPhoto.image!)")
+                        print("")
                     }
                 }
+                self.savePhotos()
+
                 print("flickrPhotos: \(flickrPhotos.count)")
+
+                // TODO: I don't think we need to store this anymore since we are storing coordinates in Core Data
 
                 // Store search results in order to save data for later use
                 var flickrSearches = [FlickrSearchResults]()
@@ -220,7 +236,6 @@ class Flickr {
             }) // taskForGETPhotosFromRandomPage
         }) // taskForGETRandomPage
     }
-
 
 
 
@@ -356,7 +371,7 @@ class Flickr {
         return "\(minimumLon),\(minimumLat),\(maximumLon),\(maximumLat)"
     }
 
-    // MARK: Helper for Creating a URL from Parameters
+    // MARK: - Helper for Creating a URL from Parameters
 
     // Returns a URL
     private func flickrURLFromParameters(_ parameters: [String:AnyObject]) -> URL {
@@ -376,184 +391,70 @@ class Flickr {
     }
 
 
-//    // MARK: Flickr API
-//
-//    private func displayImageFromFlickrBySearch(_ methodParameters: [String: AnyObject]) {
-//
-//        // create session and request
-//        let session = URLSession.shared
-//        // Input: URL
-//        let request = URLRequest(url: flickrURLFromParameters(methodParameters))
-//
-//        // create network request
-//        let task = session.dataTask(with: request) { (data, response, error) in
-//
-//            // if an error occurs, print it and re-enable the UI
-//            func displayError(_ error: String) {
-//                print(error)
-//                performUIUpdatesOnMain {
-//
-//                    print("display an UI alert")
-//                }
-//            }
-//
-//            /* GUARD: Was there an error? */
-//            guard (error == nil) else {
-//                displayError("There was an error with your request: \(String(describing: error))")
-//                return
-//            }
-//
-//            /* GUARD: Did we get a successful 2XX response? */
-//            guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode >= 200 && statusCode <= 299 else {
-//                displayError("Your request returned a status code other than 2xx!")
-//                return
-//            }
-//
-//            /* GUARD: Was there any data returned? */
-//            guard let data = data else {
-//                displayError("No data was returned by the request!")
-//                return
-//            }
-//
-//            // parse the data
-//            let parsedResult: [String:AnyObject]!
-//            do {
-//                parsedResult = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as! [String:AnyObject]
-//            } catch {
-//                displayError("Could not parse the data as JSON: '\(data)'")
-//                return
-//            }
-//
-//            /* GUARD: Did Flickr return an error (stat != ok)? */
-//            guard let stat = parsedResult[Constants.FlickrResponseKeys.Status] as? String, stat == Constants.FlickrResponseValues.OKStatus else {
-//                displayError("Flickr API returned an error. See error code and message in \(parsedResult)")
-//                return
-//            }
-//
-//            /* GUARD: Is "photos" key in our result? */
-//            guard let photosDictionary = parsedResult[Constants.FlickrResponseKeys.Photos] as? [String:AnyObject] else {
-//                displayError("Cannot find keys '\(Constants.FlickrResponseKeys.Photos)' in \(parsedResult)")
-//                return
-//            }
-//
-//            /* GUARD: Is "pages" key in the photosDictionary? */
-//            guard let totalPages = photosDictionary[Constants.FlickrResponseKeys.Pages] as? Int else {
-//                displayError("Cannot find key '\(Constants.FlickrResponseKeys.Pages)' in \(photosDictionary)")
-//                return
-//            }
-//
-//            // pick a random page!
-//            let pageLimit = min(totalPages, 40)
-//            let randomPage = Int(arc4random_uniform(UInt32(pageLimit))) + 1
-//            self.displayImageFromFlickrBySearch(methodParameters, withPageNumber: randomPage)
-//        }
-//
-//        // start the task!
-//        task.resume()
-//    }
-//
-//
-//    // What do we do here???
-//
-//    private func displayImageFromFlickrBySearch(_ methodParameters: [String: AnyObject], withPageNumber: Int) {
-//
-//        // add the page to the method's parameters
-//        var methodParametersWithPageNumber = methodParameters
-//        methodParametersWithPageNumber[Constants.FlickrParameterKeys.Page] = withPageNumber as AnyObject?
-//
-//        // create session and request
-//        let session = URLSession.shared
-//        let request = URLRequest(url: flickrURLFromParameters(methodParameters))
-//
-//        // create network request
-//        let task = session.dataTask(with: request) { (data, response, error) in
-//
-//            // if an error occurs, print it and re-enable the UI
-//            func displayError(_ error: String) {
-//                print(error)
-//                performUIUpdatesOnMain {
-//
-//                    print("create an UI alert")
-//                }
-//            }
-//
-//            /* GUARD: Was there an error? */
-//            guard (error == nil) else {
-//                displayError("There was an error with your request: \(error)")
-//                return
-//            }
-//
-//            /* GUARD: Did we get a successful 2XX response? */
-//            guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode >= 200 && statusCode <= 299 else {
-//                displayError("Your request returned a status code other than 2xx!")
-//                return
-//            }
-//
-//            /* GUARD: Was there any data returned? */
-//            guard let data = data else {
-//                displayError("No data was returned by the request!")
-//                return
-//            }
-//
-//            // parse the data
-//            let parsedResult: [String:AnyObject]!
-//            do {
-//                parsedResult = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as! [String:AnyObject]
-//            } catch {
-//                displayError("Could not parse the data as JSON: '\(data)'")
-//                return
-//            }
-//
-//            /* GUARD: Did Flickr return an error (stat != ok)? */
-//            guard let stat = parsedResult[Constants.FlickrResponseKeys.Status] as? String, stat == Constants.FlickrResponseValues.OKStatus else {
-//                displayError("Flickr API returned an error. See error code and message in \(parsedResult)")
-//                return
-//            }
-//
-//            /* GUARD: Is the "photos" key in our result? */
-//            guard let photosDictionary = parsedResult[Constants.FlickrResponseKeys.Photos] as? [String:AnyObject] else {
-//                displayError("Cannot find key '\(Constants.FlickrResponseKeys.Photos)' in \(parsedResult)")
-//                return
-//            }
-//
-//            /* GUARD: Is the "photo" key in photosDictionary? */
-//            guard let photosArray = photosDictionary[Constants.FlickrResponseKeys.Photo] as? [[String: AnyObject]] else {
-//                displayError("Cannot find key '\(Constants.FlickrResponseKeys.Photo)' in \(photosDictionary)")
-//                return
-//            }
-//
-//            if photosArray.count == 0 {
-//                displayError("No Photos Found. Search Again.")
-//                return
-//            } else {
-//                let randomPhotoIndex = Int(arc4random_uniform(UInt32(photosArray.count)))
-//                let photoDictionary = photosArray[randomPhotoIndex] as [String: AnyObject]
-//                let photoTitle = photoDictionary[Constants.FlickrResponseKeys.Title] as? String
-//
-//                /* GUARD: Does our photo have a key for 'url_m'? */
-//                guard let imageUrlString = photoDictionary[Constants.FlickrResponseKeys.MediumURL] as? String else {
-//                    displayError("Cannot find key '\(Constants.FlickrResponseKeys.MediumURL)' in \(photoDictionary)")
-//                    return
-//                }
-//
-//                // if an image exists at the url, set the image and title
-//                let imageURL = URL(string: imageUrlString)
-//                if let imageData = try? Data(contentsOf: imageURL!) {
-//
-//                    print("Success with collecting photos")
-//                    // Call completiton handler to pass data and success to MapViewController so we can go to the next screen and display pictures
-//
-//
-//                } else {
-//                    displayError("Image does not exist at \(String(describing: imageURL))")
-//                }
-//            }
-//        }
-//
-//        // start the task!
-//        task.resume()
-//    }
+    // MARK: - Core Data
 
+    var photoArray = [Photo]()
+
+    var selectedPin: Pin? {
+        didSet{
+            // all code in this body will be called once selectedCategory gets a value (!= nil)
+            // when we call loadItems() we are confident that we already have a value for selected category
+            // all we want to do is load up the items that fit the current selected category
+            // We no longer need to call loadItems() in viewDidLoad b/c we now call it here when we set the value for selectedCategory.
+            loadPhotos()
+        }
+    }
+
+    func savePhotos() {
+        // no matter how you decide to update your NSManagedObject, you still need to call context.save()
+        // because we're doing all of the CRUD changes inside the context (temp area). And it's only after we are happy with our changes do we call context.save() to COMMIT our changes to our preminent container.
+        do {
+            // Take the current state of the context and save (COMMIT) changes to our persistantContainer.
+            try context.save()
+        } catch {
+            print("Error saving context \(error)")
+        }
+        //        // after saving/committing data, reload the tableView
+        //        self.tableView.reloadData()
+    }
+
+
+    // How is our TodoListViewController loading up all of the items in the table view?
+    // 1. The items come from the itemArray
+    // 2. The itemArry comes from the loadItems()
+    // 3. The loadItems() fetches all of the NSManagedObjects that belong in the <Item> Entity.
+    // 4. But in order to only load the items that have the parent category matching the selectedCategory, we need to (1) query our database and we need to (2) filter our results.
+    // 5. We need to create a predicate that is an NSPredicate and initialize it with the formt that the parent category of all of the items that we want back must have its .name property matching (MATCHES %@) the current selectedCategory!.name.
+    // 6. Then we need to add this predicate to the request (request.predicate = predicate).
+    // 7. Add another parameter to the loadItems() method, called predicate which is a search query that we want to make in order to load up our items. It will be of data type NSPredicate.
+    // Method with Default Value listed inside loadItems(): = Item.fetchRequest() in case not parameter passed in (see viewDidLoad).
+    // NSPredicate? Optional b/c
+    func loadPhotos(with request: NSFetchRequest<Photo> = Photo.fetchRequest(), predicate: NSPredicate? = nil) {
+        // R of CRUD = READ. Fetching items is "READ"
+
+        print("")
+        print("Are we here?")
+        print("")
+
+        // In order to only display filtered selected category results we need to create a predicate
+        let predicateLat = NSPredicate(format: "parentPin.latitude MATCHES &@", (selectedPin?.latitude)!)
+        let predicateLong = NSPredicate(format: "parentPin.longitude MATCHES %@", (selectedPin?.longitude)!)
+        let pinPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [predicateLat, predicateLong])
+
+        request.predicate = pinPredicate
+
+        // our app has to speak to the context before we can speak to our persistantContainer
+        // we want to fetch our current request, which is basically a blank request that returns everything in our persistantContainer, it can throw an error so put it inside a do-try-catch statement.
+        do {
+            // fetch(T) returns NSFetchRequestResult, which is an array of objects / of 'Items' that is stored in our persistantContainer
+            // save results in the itemArray which is what was used to load up the tableView.
+            // TRY using our context to '.fetch' these results from our persistent store ('request')
+            photoArray = try context.fetch(request)
+        } catch {
+            print("loadItems(): Error fetching data from context \(error)")
+        }
+//        tableView.reloadData()
+    }
 
 }
 

@@ -8,92 +8,139 @@
 
 // Sources:
 // Drop a pin in a map view: https://codepad.co/snippet/JgYdAoXd
+// Core Data: https://www.udemy.com/ios-11-app-development-bootcamp/learn/v4/t/lecture/8790828?start=0
 
 import UIKit
 import MapKit
+import CoreData
 
 // MainMapViewController will be the delegate for the map view
 class MainMapViewController: UIViewController, MKMapViewDelegate {
 
-    // MARK: - Properties
-
-    fileprivate let flickr = Flickr() // What is this???
-
-    
-
-
     // MARK: - Outlets
+
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
 
+    // MARK: - Properties
+
+    var pinArray = [Pin]()
+    var photoArray = [Photo]() // ???
+
+
+    // data model
+    // CRUD: Create, Read, Updatet, Delete
+    // 'context' goes into the AppDelegate and grabs the persistentContainer, and then we grab a reference of the viewContext for that persistantContainer. 
+    // (UIApplication.shared.delegate as! AppDelegate) gives us access to the AppDelegate object. We can not tap into its property 'persistentContainer and we are going to grab the 'viewContext' of the persistentContainer.
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
     // MARK: - Lifecycle Methods
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        activityIndicator.startAnimating()
+
+        // Path to Data Model
+        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
 
         // Assign delegate
         mapView.delegate = self
+
+        // fetch all existing pins (is any) from the view context
+        loadPins()
 
         // Enable the user to drop a pin on the mapView
         let myLongPress: UILongPressGestureRecognizer = UILongPressGestureRecognizer()
         myLongPress.addTarget(self, action: #selector(MainMapViewController.recognizeLongPress(sender:)))
         mapView.addGestureRecognizer(myLongPress)
+
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
 
+        activityIndicator.stopAnimating()
+        activityIndicator.hidesWhenStopped = true
 
     }
 
+    // MARK: - Data Manipulation Methods
+
+    // Load Data
+    // Read data here
+    // Method with Default Value listed inside loadItems(): = Item.fetchRequest() in case not parameter passed in (see viewDidLoad).
+    func loadPins(with request: NSFetchRequest<Pin> = Pin.fetchRequest()) {
+
+        let request: NSFetchRequest<Pin> = Pin.fetchRequest()
+
+        do {
+            pinArray = try context.fetch(request)
+        } catch {
+            print("loadPins(): Error fetching data from context \(error)")
+        }
+//        tableView.reloadData()
+    }
+
+    // Save Data
+    func saveToDataModel() {
+        do {
+            // try to commit whatever is in current context
+            try context.save()
+        } catch {
+            print("saveCategories(): Error saving context \(error)")
+        }
+        //        // After save, update tableView
+        //        tableView.reloadData()
+    }
+
+
+    // MARK: - Gesture Recognizer Methods
 
     // Gesture Recognizer for Dropping a Pin on Map
     @objc func recognizeLongPress(sender: UILongPressGestureRecognizer) {
         if sender.state != UIGestureRecognizerState.began {
             return
         }
+
+        // **** Drop a Pin ****
         let location = sender.location(in: mapView)
-        let myCoordinate: CLLocationCoordinate2D = mapView.convert(location, toCoordinateFrom: mapView)
-        let myPin: MKPointAnnotation = MKPointAnnotation()
-        myPin.coordinate = myCoordinate
-        print("Pin dropped - latitude: \(myPin.coordinate.latitude), longitude: \(myPin.coordinate.longitude).")
-        mapView.addAnnotation(myPin)
-    }
+        let newCoordinate: CLLocationCoordinate2D = mapView.convert(location, toCoordinateFrom: mapView)
+        let pin: MKPointAnnotation = MKPointAnnotation()
+        pin.coordinate = newCoordinate
+        print("Pin dropped - latitude: \(pin.coordinate.latitude), longitude: \(pin.coordinate.longitude).")
+        mapView.addAnnotation(pin)
 
 
-    // Drop a Pin
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        let myPinIdentifier = "PinAnnotationIdentifier"
-        let myPinView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: myPinIdentifier)
-        myPinView.animatesDrop = true
-        myPinView.annotation = annotation
-        return myPinView
-    }
+        // **** Core Data (Pin) ****
+        // When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
+        // 1. Create a new NSManagedObject, newPin
+        let newPin = Pin(context: self.context)
 
+        // 2. Setup newPin with the new pin's coordinates
 
-    // Enable the User to Select a Pin
-    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        // add coordinates to newPin
+        newPin.latitude = pin.coordinate.latitude
+        newPin.longitude = pin.coordinate.longitude
 
-        // You want to trigger a search when the user selects a pin.
-        // perform segue to next VC
+        // append newPin to pinArray
+        self.pinArray.append(newPin)
+        print("pinArray: \(self.pinArray)")
 
-        guard let selectedLatitude = view.annotation?.coordinate.latitude, let selectedLongitude = view.annotation?.coordinate.longitude else {
-            print("Error with selected pin latitudue and longitude")
-            return
-        }
+        // save to data model
+        self.saveToDataModel()
+        //**** Core Data ****
 
-        // Coordinates contain a value, save them to Constant file properties to use in Flickr photos search
-        Constants.SelectedPin.latitude = selectedLatitude
-        Constants.SelectedPin.longitude = selectedLongitude
+        
+        // **** Flickr Network Request ****
 
-        print("")
-        print("$$$ Passing a pin to download images for cordinates:")
-        print("Saved Lat: \(Constants.SelectedPin.latitude)")
-        print("Saved Long: \(Constants.SelectedPin.longitude)")
-        print("")
+        // Coordinates contain a value, save them to Constant file properties to use in Flickr API photos search
+        Constants.SelectedPin.latitude = pin.coordinate.latitude
+        Constants.SelectedPin.longitude = pin.coordinate.longitude
 
         Flickr.sharedInstance().searchFlickrForCoordinates { (success, errorString) in
+
+            print("Running network request on the main thread?: \(Thread.isMainThread)")
 
             /* GUARD: Was there an error? */
             guard (success == true) else {
@@ -103,34 +150,57 @@ class MainMapViewController: UIViewController, MKMapViewDelegate {
 
                 performUIUpdatesOnMain {
                     self.createAlert(title: "Error", message: "Failure to download photos of location.")
-//                    self.enableUI()
+                    //                    self.enableUI()
                 }
                 return
             }
 
-            print("Successfully obtained Photos from Flickr, segue to next VC")
+
+            print("Successfully obtained Photos from Flickr")
             // After all are successful, perfore segue
-            self.segueToPhotoAlbumViewController()
 
         } // End of Closure
+
+
+
+        
     }
 
-    // MARK: - Methods
+    // MARK: - Map View Methods
+
+    // Drop a Pin
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        let myPinIdentifier = "PinAnnotationIdentifier"
+        let myPinView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: myPinIdentifier)
+        myPinView.animatesDrop = true
+        myPinView.annotation = annotation
+
+        return myPinView
+    }
+
+    // Enable the User to Select a Pin
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+
+        // You want to trigger a search when the user selects a pin.
+        // perform segue to next VC
+        performSegue(withIdentifier: "PinTappedSegue", sender: self)
+
+    }
+
+    // MARK: - Segue Methods
 
     func segueToPhotoAlbumViewController() {
 
         performUIUpdatesOnMain {
             self.performSegue(withIdentifier: "PinTappedSegue", sender: self)
+            self.activityIndicator.stopAnimating()
+            self.activityIndicator.hidesWhenStopped = true
         }
     }
-
-    
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "PinTappedSegue" {
             let destinationVC = segue.destination as! PhotoAlbumViewController
-
-
 
             // send cordinates to Flickr API
 
@@ -146,7 +216,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate {
             //present(destinationVC, animated: true, completion: nil)
 
         }
-
     }
 
 

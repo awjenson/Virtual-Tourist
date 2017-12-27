@@ -25,6 +25,8 @@ import UIKit
 // Data about a photo retrieved from Flickr – its thumbnail, image, and metadata information such as its ID. There are also some methods to build Flickr URLs and some size calculations. FlickrSearchResults contains an array of these objects.
 
 
+// *** This class should probably be deleted since we now have Core Data Model Entity
+
 class FlickrPhoto : Equatable {
   var thumbnail : UIImage?
   var largeImage : UIImage?

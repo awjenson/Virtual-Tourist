@@ -30,7 +30,7 @@ class PhotoAlbumCollectionViewCell: UICollectionViewCell {
     // MARK: - View Life Cycle
     override func awakeFromNib() {
          super.awakeFromNib()
-        imageView.layer.borderColor = themeColor.cgColor
+
         isSelected = false
     }
 }
