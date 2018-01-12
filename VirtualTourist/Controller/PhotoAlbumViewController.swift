@@ -19,9 +19,15 @@ import CoreData
     (1) UICollectionViewDelegate,
     (2) UICollectionViewDataSource,
     (3) UICollectionViewDelegateFlowLayout,
-    (4) NSFetchedResultsControllerDelegate
+    (4) NSFetchedResultsControllerDelegate,
+    (5) MKMapViewDelegate
  */
-class PhotoAlbumViewController: UIViewController {
+
+
+
+// See CoreDataViewController for Collection View Methods
+
+class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
 
     // MARK: - Outlets
     
@@ -30,164 +36,101 @@ class PhotoAlbumViewController: UIViewController {
 
 
     // MARK: - Properties
-
-    // array to store photos that will display in collectionView
-    var photoArray = [Photo]() // NSManagedObject
-
-//    var selectedPin: Pin? {
-//        didSet{
-//            // all code in this body will be called once selectedCategory gets a value (!= nil)
-//            // when we call loadItems() we are confident that we already have a value for selected category
-//            // all we want to do is load up the items that fit the current selected category
-//            // We no longer need to call loadItems() in viewDidLoad b/c we now call it here when we set the value for selectedCategory.
-//            loadPhotos()
-//        }
-//    }
-
-    // Data Model
-    // (UIApplication.shared.delegate as! AppDelegate) gives us access to the AppDelegate object. We can not tap into its property 'persistentContainer and we are going to grab the 'viewContext' of the persistentContainer.
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-
-    let reuseIdentifier = "FlickrCell"
-    fileprivate let sectionInsets = UIEdgeInsets(top: 50.0, left: 20.0, bottom: 50, right: 20.0)
+    fileprivate let flickr = Flickr()
+//    fileprivate var searches = [FlickrSearchResults]()
 
 
-    var fetchedResultsController : NSFetchedResultsController<NSFetchRequestResult>? {
-        didSet {
-            // Whenever the frc changes, we execute the search and
-            // reload the table
-            fetchedResultsController?.delegate = self
-            executeSearch()
-            collectionView.reloadData()
-        }
-    }
+    // Collection View Flow 
+    let itemsPerRow: CGFloat = 3
+    let sectionInsets = UIEdgeInsets(top: 50.0, left: 20.0, bottom: 50, right: 20.0)
 
 
+    // searches is an array that will keep track of all the searches made in the app
+    // Core Data Stack
+    var stack: CoreDataStack?
+    let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
+
+    // Pin
+    var pinSelected: Pin? = nil
+//    var selectedPinLocation = CLLocationCoordinate2D()
+
+    // Photos
+    var photos: [Photo] = [Photo]() // Photo array
+    var selectedIndex = [IndexPath]()
 
 
-    // flickr - a reference to the object that will do the searching for you
-
-    fileprivate let itemsPerRow: CGFloat = 3
-
-    // Allow for multiple photo selection
-    // selectedPhotos: array that will keep track of the photos the user has selected
-    fileprivate var selectedPhotos = [FlickrPhoto]()
-    // shareTextLabel: will provide feedback to the user on how many photos have been selected
-    fileprivate let shareTextLabel = UILabel()
-
-    fileprivate var searches = [FlickrSearchResults]()
-
-    // set selected pin location
-    let initialLocation = CLLocation(latitude: Constants.SelectedPin.latitude, longitude: Constants.SelectedPin.longitude)
-
-    // The location argument is the center point. The region will have north-south and east-west spans based on a distance of regionRadius.
-    let regionRadius: CLLocationDistance = 10000
-
-    func centerMapOnLocation(location: CLLocation) {
-        let coordinateRegion = MKCoordinateRegionMakeWithDistance(location.coordinate, regionRadius, regionRadius)
-        // setRegion(_:animated:) tells mapView to display the region.
-        mapView.setRegion(coordinateRegion, animated: true)
-
-        dropPin()
-    }
-
-    // Drop a pin at selected location
-    func dropPin() {
-        let pinAnnotation: MKPointAnnotation = MKPointAnnotation()
-        pinAnnotation.coordinate = CLLocationCoordinate2DMake(Constants.SelectedPin.latitude, Constants.SelectedPin.longitude)
-        mapView.addAnnotation(pinAnnotation)
-    }
-
+    // MARK: - Lifecycle Methods
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // We want to get a path of where our current data is being stored.
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
 
         // Configure the DataSource and Delegate to the CollectionView Outliet
         collectionView.delegate = self
         collectionView.dataSource = self
 
-//        mapView.delegate = self
+        mapView.delegate = self
+        setupMapAndDropPin()
 
-//        // Get the stack
-//        let delegate = UIApplication.shared.delegate as! AppDelegate
-//        let stack = delegate.stack
-
-        // call the helper method to zoom into initialLocation at load
-        centerMapOnLocation(location: initialLocation)
-
-//        // Create a fetchrequest
-//        let fr = NSFetchRequest<NSFetchRequestResult>(entityName: "Notebook")
-//        fr.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true),
-//                              NSSortDescriptor(key: "creationDate", ascending: false)]
-//
-//        // Create the FetchedResultsController
-//        fetchedResultsController = NSFetchedResultsController(fetchRequest: fr, managedObjectContext: stack.context, sectionNameKeyPath: nil, cacheName: nil)
-//
-//        // Fetch photos
-//        try! fetchedResultsController?.performFetch()
-
-        loadPhotos()
-
+        // Core Data setup for select Pin/Photos
+        setupFetchResultWithPredicateAndFetchResultController()
     }
 
-    func loadPhotos() {
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(true)
 
-        // specify the data type and the <entity> that you're trying to request.
-        // Tap into our Item class/entity and create a new fetchRequest()
-        let request: NSFetchRequest<Photo> = Photo.fetchRequest()
+        // Fetch photos from selected pin
+        photos = photosFetchRequest()
+    }
 
-        // our app has to speak to the context before we can speak to our persistantContainer
-        // we want to fetch our current request, which is basically a blank request that returns everything in our persistantContainer, it can throw an error so put it inside a do-try-catch statement.
+
+    // MARK: - Methods
+
+    // Drop a pin at selected location
+    // Needs to display selected Pin (via passing data with segue)
+    func setupMapAndDropPin() {
+
+        mapView.addAnnotation(pinSelected!)
+        let span = MKCoordinateSpanMake(0.5, 0.5)
+        let region = MKCoordinateRegion(center: pinSelected!.coordinate, span: span)
+        mapView.setRegion(region, animated: true)
+    }
+
+
+
+
+    // Setup FetchResult, Predicate, and FetchResultController
+    func setupFetchResultWithPredicateAndFetchResultController() {
+
+//        // Similar to Udacity's Cool Notes, Create (1) FetchRequest and (2) FetchRequestController in viewDidLoad of the PhotoAlbumViewController
+//        // (1/2) Create a fetchrequest
+//        let fr = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
+//        // Udacity comment: "So far we have a search that will match ALL notes. However, we're only interested in those within the selected Photo data: NSPredicate to the rescue!"
+//        // For (format: "pin = %", pinSelected!), "pin" is from the the Relationships section of the Photo Entity. And "pinSelected!" is the specific Pin (Entity) that was selected.
+//        fr.predicate = NSPredicate(format: "pin = %@", pinSelected!)
+//        fr.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
+//
+//        // (2/2) Create the FetchedResultsController
+//        fetchedResultsController = NSFetchedResultsController(fetchRequest: fr, managedObjectContext: (stack!.context), sectionNameKeyPath: nil, cacheName: nil)
+
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
+        fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
+    }
+
+
+    func photosFetchRequest() -> [Photo] {
+
         do {
-            // fetch(T) returns NSFetchRequestResult, which is an array of objects / of 'Items' that is stored in our persistantContainer
-            // save results in the itemArray which is what was used to load up the tableView.
-            photoArray = try context.fetch(request)
+            print("photosFetchRequest(): Trying to fetch photos")
+            return try stack!.context.fetch(fetchRequest) as! [Photo]
+
         } catch {
-            print("loadItems(): Error fetching data from context \(error)")
+            print("There was an error fetching the photos from the selected pin")
+            return [Photo]()
         }
     }
 
 
-
-
-
-
-
-
-
-
-}
-
-
-// MARK: - CoreDataTableViewController (Fetches)
-
-extension PhotoAlbumViewController {
-
-    func executeSearch() {
-        if let fc = fetchedResultsController {
-            do {
-                try fc.performFetch()
-            } catch let e as NSError {
-                print("Error while trying to perform a search: \n\(e)\n\(String(describing: fetchedResultsController))")
-            }
-        }
-    }
-}
-
-
-// ********************************
-// MARK: - UICollectionViewDelegate
-extension PhotoAlbumViewController: UICollectionViewDelegate {
-
-    
-}
-
-// **********************************
-// MARK: - UICollectionViewDataSource
-extension PhotoAlbumViewController: UICollectionViewDataSource {
+    // MARK: Collection View - DataSource Protocol Methods
 
     // 1
     // There's one search per section, so the number of sections is the count of the searches array
@@ -196,82 +139,186 @@ extension PhotoAlbumViewController: UICollectionViewDataSource {
     }
 
     // 2
-    // The number of items in a section is the count of the searchResults array from the relevant FlickrSearch object
+    // The number of items in a section is the count of the photos array from the selectedPin object (see PhotoAlbumViewController).
     func collectionView(_ collectionView: UICollectionView,
-                                 numberOfItemsInSection section: Int) -> Int {
+                        numberOfItemsInSection section: Int) -> Int {
 
-        return 20
-
-//        if searches[section].searchResults.count < 20 {
-//            return searches[section].searchResults.count
-//        } else {
-//            return 20
-//        }
+        //        return pinPassedOver.searchResults.count
+        return photos.count
     }
 
     //3
     // ************ This is a unique method when it comes to Core Data
-    // This is a placeholder method just to return a blank cell - you'll be populating it later. Note that collection views require you to have registered a cell with a reuse identifier, or a runtime error will occur.
+    // This is a placeholder method just to return a blank cell – you’ll be populating it later. Note that collection views require you to have registered a cell with a reuse identifier, or a runtime error will occur.
     func collectionView(_ collectionView: UICollectionView,
-                                 cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 
-        // fatalError("This method MUST be implemented by a subclass of PhotoAlbumViewController")
-
-        // This method must be implemented by our subclass. There's no way CoreDataTableViewController is able to know what type of cell we want to use.
-
-        // Core Data steps:
-        // a. Find the right Pin that we need
-            // a.a NSFetchResults has a method called Object For indexPath
-//        let pin = fetchedResultsController!.object(at: indexPath) as! Pin
-
-        // b. Create the cell
         let cell = collectionView.dequeueReusableCell(
-            withReuseIdentifier: reuseIdentifier, for: indexPath) as! PhotoAlbumCollectionViewCell
+            withReuseIdentifier: "FlickrCell", for: indexPath) as! PhotoAlbumCollectionViewCell
 
-        // Sync Pin -> cell (display the information from the Pin in the cell)
-        cell.backgroundColor = UIColor.white
+        // Inital setup to display images
+        cell.imageView.image = UIImage(named: "defaultImage")
+        cell.activityIndicator.startAnimating()
 
+        // Check if photo already exists in Core Data
+        if let photo = self.photos[indexPath.item].image {
+            print("cellForItemAt indexPath: Photo already exists, loading from Core Data")
 
-        // 1
-        // The cell coming back is FlickPhotoCellectionViewCell
-
-
-
-
-
-        // 3
-        // You populate the image view with the thumbnail
-        // cell.imageView.image = flickrPhoto.thumbnail
+            // Load on main queue
+            DispatchQueue.main.async {
+                if let image = UIImage(data: photo as Data) {
+                    cell.imageView.image = image
+                    // Stop animating activityIndicator
+                    cell.activityIndicator.stopAnimating()
+                }
+            }
+        } else {
+            // photo does not already exist, download from Flickr API
+            print("cellForItemAt indexPath: Photo does NOT already exist, loading from Flickr API")
+            loadNewPhotosAndSaveToCoreData()
+        }
 
         // configure the cell
         return cell
     }
 
-    // custom function to generate a random UIColor
-    func randomColor() -> UIColor{
-        let red = CGFloat(drand48())
-        let green = CGFloat(drand48())
-        let blue = CGFloat(drand48())
-        return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
+    // Rubric: Once all images have been downloaded, can the user remove photos from the album by tapping the image in the collection view.
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+
+        let photo = photos[indexPath.row]
+        stack?.context.delete(photo)
+        photos.remove(at: indexPath.row)
+        collectionView.reloadData()
     }
 
 
 
-    func collectionView(_ collectionView: UICollectionView, moveItemAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
 
-        var sourceResults = searches[(sourceIndexPath as NSIndexPath).section].searchResults
-        let flickrPhoto = sourceResults.remove(at: (sourceIndexPath as NSIndexPath).row)
 
-        var destinationResults = searches[(destinationIndexPath as NSIndexPath).section].searchResults
-        destinationResults.insert(flickrPhoto, at: (destinationIndexPath as NSIndexPath).row)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // MARK: - IB Action Methods
+
+    @IBAction func refreshImagesButtonTapped(_ sender: UIButton) {
+
+        loadNewPhotosAndSaveToCoreData()
+
     }
 
+    // MARK: - Methods
+
+    func loadNewPhotosAndSaveToCoreData() {
+
+        // First, delete existing photos
+        deleteAllPhotos()
+
+        // Second, download new photos
+
+        /// **** Flickr Network Request ****
+
+        // Coordinates contain a value, save them to Constant file properties to use in Flickr API photos search
+
+        // Cordinates Saved, Begin Flickr API Request
+        // **** Cordinates Saved, Begin Flickr API Request
+        flickr.searchFlickrForCoordinates(pin: pinSelected!) { (results, errorString) in
+
+            print("Running network request on the main thread? (It should be false b/c inside searchFlickrForCoordinates closure): \(Thread.isMainThread)")
+
+            /* GUARD: Was there an error? */
+            guard (results != nil) else {
+                // Error...
+                // display the errorString using createAlert
+                // The app gracefully handles a failure to download student locations.
+                print("Unsuccessful in obtaining photos of selected location from Flickr: \(String(describing: errorString))")
+
+                performUIUpdatesOnMain {
+                    // Display error to the user
+                    self.createAlert(title: "Error", message: "Failure to download photos of location.")
+                }
+                return
+            }
+
+            print("Successfully obtained Photos from Flickr")
+
+            performUIUpdatesOnMain {
+
+                var photoTemp: Photo?
+
+                print("recognizeLongPress(): Get photos for selected pin.")
+
+                // **** Core Data: Add web URLs and Pin(s) only at this point...
+                if photoTemp == nil {
+                    for photo in results! {
+                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: (self.stack?.context)!) {
+                            photoTemp = Photo(entity: entity, insertInto: (self.stack?.context)!)
+                            photoTemp?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
+                            photoTemp?.pin = self.pinSelected
+                        }
+                    }
+                }
+                print("reload complete")
+                // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
+                self.stack?.save()
+
+                // reload images on collection view
+                self.collectionView.reloadData()
+            }
+            return
+        } // End of Flickr Closure
+    }
+
+
+    // This method is called in loadNewPhotosAndSaveToCoreData() in order to delete existing photos before downloading new photos.
+    func deleteAllPhotos() {
+        print("Deleting all photos")
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
+        fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
+
+        do {
+            let photos = try stack?.context.fetch(fetchRequest) as! [Photo]
+            for photo in photos {
+                // delete NSManagedObject
+                stack?.context.delete(photo)
+            }
+        } catch {
+                print("deleteAllPhotos: Error deleting photo")
+        }
+
+    }
+
+} // End of Class PhotoAlbumViewController
+
+
+extension PhotoAlbumViewController: MKMapViewDelegate {
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+
+        let myPinView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: "PinAnnotationIdentifier")
+        myPinView.animatesDrop = true
+        myPinView.annotation = annotation
+
+        return myPinView
+    }
 }
-
 
 // ******************************************
 // MARK: - UICollectionViewDelegateFlowLayout
 extension PhotoAlbumViewController: UICollectionViewDelegateFlowLayout {
+    // From Ray Wenderlich Tutorials on Collection Views...
+    // Collection View Layout
+
+
     // 1
     // This is responsible for telling the layout the size of a given cell.
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -298,49 +345,14 @@ extension PhotoAlbumViewController: UICollectionViewDelegateFlowLayout {
 }
 
 
-// ***************************************************************
-// MARK: - CoreDataTableViewController: NSFetchedResultsControllerDelegate
 
-extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
 
-//    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-//        tableView.beginUpdates()
-//    }
-//
-//    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
-//
-//        let set = IndexSet(integer: sectionIndex)
-//
-//        switch (type) {
-//        case .insert:
-//            tableView.insertSections(set, with: .fade)
-//        case .delete:
-//            tableView.deleteSections(set, with: .fade)
-//        default:
-//            // irrelevant in our case
-//            break
-//        }
-//    }
-//
-//    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
-//
-//        switch(type) {
-//        case .insert:
-//            tableView.insertRows(at: [newIndexPath!], with: .fade)
-//        case .delete:
-//            tableView.deleteRows(at: [indexPath!], with: .fade)
-//        case .update:
-//            tableView.reloadRows(at: [indexPath!], with: .fade)
-//        case .move:
-//            tableView.deleteRows(at: [indexPath!], with: .fade)
-//            tableView.insertRows(at: [newIndexPath!], with: .fade)
-//        }
-//    }
-//
-//    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-//        tableView.endUpdates()
-//    }
-}
+
+
+
+
+
+
 
 
 

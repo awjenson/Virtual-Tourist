@@ -19,19 +19,20 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <mapView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" mapType="standard" showsUserLocation="YES" translatesAutoresizingMaskIntoConstraints="NO" id="gci-ZC-eZ4">
-                                <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                                <rect key="frame" x="0.0" y="64" width="375" height="603"/>
                             </mapView>
-                            <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" hidesWhenStopped="YES" animating="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="BW8-XO-vRR">
+                            <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" animating="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="BW8-XO-vRR">
                                 <rect key="frame" x="169" y="315" width="37" height="37"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                             </activityIndicatorView>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
-                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" id="3xJ-MQ-i59"/>
-                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="QHQ-zt-jNY"/>
-                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="bottom" secondItem="6Tk-OE-BBY" secondAttribute="bottom" id="S4Q-fD-gZy"/>
-                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="gQu-B1-ttD"/>
+                            <constraint firstItem="BW8-XO-vRR" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="Rbm-Ub-bVP"/>
+                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="VKF-JW-pJM"/>
+                            <constraint firstAttribute="trailing" secondItem="gci-ZC-eZ4" secondAttribute="trailing" id="Ybu-1L-w58"/>
+                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="bottom" secondItem="6Tk-OE-BBY" secondAttribute="bottom" id="eiJ-Wy-dts"/>
+                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="centerX" secondItem="BW8-XO-vRR" secondAttribute="centerX" id="hpE-b3-yyg"/>
+                            <constraint firstItem="gci-ZC-eZ4" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="kTW-c5-Dtb"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
@@ -44,7 +45,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="476" y="133.5832083958021"/>
+            <point key="canvasLocation" x="475.5" y="133.5"/>
         </scene>
         <!--Photo Album View Controller-->
         <scene sceneID="Eeq-Ff-29u">
@@ -77,7 +78,7 @@
                                             <rect key="frame" x="0.0" y="0.0" width="200" height="200"/>
                                             <autoresizingMask key="autoresizingMask"/>
                                             <subviews>
-                                                <imageView userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="LeZ-Iw-Nto">
+                                                <imageView userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="defaultImage" translatesAutoresizingMaskIntoConstraints="NO" id="LeZ-Iw-Nto">
                                                     <rect key="frame" x="0.0" y="0.0" width="200" height="200"/>
                                                 </imageView>
                                                 <activityIndicatorView hidden="YES" opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="hCE-DW-b9p">
@@ -104,9 +105,16 @@
                                 <rect key="frame" x="0.0" y="623" width="375" height="44"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                                 <items>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="fnQ-Kx-4Z4"/>
-                                    <barButtonItem title="New Collection" width="42" id="LPa-IQ-v1h"/>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="Zsh-5o-fj4"/>
+                                    <barButtonItem style="plain" id="cTy-Y0-oX8">
+                                        <button key="customView" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" id="xSQ-NX-acW">
+                                            <rect key="frame" x="16" y="7" width="343" height="30"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                            <state key="normal" title="Refresh Images"/>
+                                            <connections>
+                                                <action selector="refreshImagesButtonTapped:" destination="vBG-Sc-5PU" eventType="touchUpInside" id="xIc-Yh-CsL"/>
+                                            </connections>
+                                        </button>
+                                    </barButtonItem>
                                 </items>
                             </toolbar>
                         </subviews>
@@ -124,7 +132,7 @@
                         <viewLayoutGuide key="safeArea" id="biK-OS-ryO"/>
                     </view>
                     <connections>
-                        <outlet property="collectionView" destination="uhj-hp-nGT" id="JPl-Rj-8ZB"/>
+                        <outlet property="collectionView" destination="uhj-hp-nGT" id="nKY-0k-4dy"/>
                         <outlet property="mapView" destination="33F-LD-lEH" id="dZO-1t-OeB"/>
                     </connections>
                 </viewController>
@@ -151,4 +159,7 @@
             <point key="canvasLocation" x="-218" y="134"/>
         </scene>
     </scenes>
+    <resources>
+        <image name="defaultImage" width="400" height="300"/>
+    </resources>
 </document>

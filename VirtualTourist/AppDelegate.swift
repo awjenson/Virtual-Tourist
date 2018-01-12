@@ -7,18 +7,21 @@
 //
 
 import UIKit
-import CoreData
+import CoreData // MARK: - From Udacity's Cool Notes App
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
-    // model name refers to the name of the .xcdatamodeId file
-//    let stack = CoreDataStack(modelName: "VirtualTourist")!
+    // MARK: - From Udacity's Cool Notes App
+    let stack = CoreDataStack(modelName: "DataModel")!
+    let delegate = UIApplication.shared.delegate as! AppDelegate
+    let context = (UIApplication.shared.delegate as! AppDelegate).stack.context
 
-    // MARK: - Code from Lesson 1: Simple Persistance
 
+
+    // MARK: - Udacity's Code from Lesson 1: Simple Persistance
     func checkIfFirstLaunch() {
         if UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
             print("App has launched before")
@@ -27,13 +30,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+
+
+
+
+
     // MARK: - App Delegate Functions
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
-//        // Start Autosaving based on code from CoolNotes App (every 60 seconds)
-//        stack.autoSave(60)
+        
+
+
+        // Start Autosaving based on code from CoolNotes App (every 60 seconds)
+
 
         return true
     }
@@ -43,7 +54,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
 
         // Placement of Save code is based instructions provided in CoolNotes' lesson 10-SaveOnAppTransition.
-        self.saveContext()
+
 
     }
 
@@ -52,7 +63,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
 
         // Placement of Save code is based instructions provided in CoolNotes' lesson 10-SaveOnAppTransition.
-        self.saveContext()
+
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
@@ -66,8 +77,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationWillTerminate(_ application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
         // Saves changes in the application's managed object context before the application terminates.
-        self.saveContext()
+        
     }
+
+
+
+
+
+
 
     // MARK: - Core Data stack
 
