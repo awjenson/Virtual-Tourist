@@ -25,15 +25,11 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
     // MARK: - Properties
     var currentPin: Pin?
     var coordinatesForPin = CLLocationCoordinate2D()
-
-    // flickr is a reference to the object that will do the searching for you
-    fileprivate let flickr = Flickr()
-
-
-
     var pins = [Pin]()
     var selectedPin: Pin? = nil
 
+    // flickr is a reference to the object that will do the searching for you
+    fileprivate let flickr = Flickr()
 
     // Udacity comments, "When a new Pin is created, the Context sends a notification to the fetchedResultsController. fetchedResultsController uses a delegate (NSFetchedResultsControllerDelegate) to communiate to MainMapViewController.
     var fetchedResultsController : NSFetchedResultsController<NSFetchRequestResult>? {
@@ -51,10 +47,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
         super.init(coder: aDecoder)
     }
 
-
-
-
-
     // MARK: - Lifecycle Methods
 
     override func viewDidLoad() {
@@ -65,12 +57,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
         // Path to Data Model
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
 
-
-
-
-        // create NSFetchedResultsController
-        
-
         // Assign delegate
         mapView.delegate = self
 
@@ -79,7 +65,7 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
         // Add gesture recognizer to Enable User to Drop a Pin
         let myLongPress: UILongPressGestureRecognizer = UILongPressGestureRecognizer()
-        myLongPress.addTarget(self, action: #selector(MainMapViewController.recognizeLongPress(sender:)))
+        myLongPress.addTarget(self, action: #selector(MainMapViewController.recognizeLongPress(_:)))
         mapView.addGestureRecognizer(myLongPress)
 
     }
@@ -108,13 +94,76 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
     }
 
 
+    // MARK: - Core Data
+    func pinFetchRequest() -> [Pin] {
+
+        // Create a fetchrequest
+        let fr = NSFetchRequest<NSFetchRequestResult>(entityName: "Pin")
+        fr.sortDescriptors = [NSSortDescriptor(key: "latitude", ascending: true), NSSortDescriptor(key: "longitude", ascending: true)]
+
+        // Create the FetchedResultsController
+        fetchedResultsController = NSFetchedResultsController(fetchRequest: fr, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
+
+        // Fetch the saved annotations
+        do {
+            return try context.fetch(fr) as! [Pin]
+        } catch {
+            print("pinFetchRequest(): Error fetching the saved annotations")
+            return [Pin]()
+        }
+    }
+
+    // Repeat Code (see above)
+//    func getPin(latitude: CLLocationDegrees, longitude: CLLocationDegrees) -> [Pin]? {
+//        let fetchRequest = getFetchRequest(entityName: "Pin", format: "latitude = %@ && longitude = %@", argArray: [latitude, longitude])
+//
+//        let pins: [Pin]? = fetchPin(fetchRequest: fetchRequest)
+//        return pins
+//    }
+//
+//    func fetchPin(fetchRequest: NSFetchRequest<NSFetchRequestResult>) -> [Pin]? {
+//        var pins: [Pin]?
+//
+//        do {
+//            pins = try context.fetch(fetchRequest) as? [Pin]
+//
+//        } catch {
+//            print("fetchPin(): Error, pin not found")
+//        }
+//        return pins
+//    }
+//
+//
+//    func getFetchRequest(entityName: String, format: String, argArray: [Any]?) -> NSFetchRequest<NSFetchRequestResult> {
+//        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
+//
+//        let predicate = NSPredicate(format: format, argumentArray: argArray)
+//        fetchRequest.predicate = predicate
+//
+//        return fetchRequest
+//    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
     // MARK: - Gesture Recognizer Methods
 
+    // Add a New Annotation
     // Gesture Recognizer for Dropping a Pin on Map, then Save Pin in Core Data and Run Flickr API Network Request
-    @objc func recognizeLongPress(sender: UILongPressGestureRecognizer) {
+    @objc func recognizeLongPress(_ sender: UILongPressGestureRecognizer) {
+
         if sender.state != UIGestureRecognizerState.began {
             return
         }
@@ -124,18 +173,19 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
         let newCoordinate: CLLocationCoordinate2D = mapView.convert(location, toCoordinateFrom: mapView)
 
         // Create new annotation (pin)
-        let annotation: MKPointAnnotation = MKPointAnnotation()
+        let annotation = MKPointAnnotation()
         annotation.coordinate = newCoordinate
         print("Pin dropped - latitude: \(annotation.coordinate.latitude), longitude: \(annotation.coordinate.longitude).")
+
         // Add pin to mapView
         mapView.addAnnotation(annotation)
 
         
         // **** Core Data (Save Pin) ****
-        if let ent = NSEntityDescription.entity(forEntityName: "Pin", in: stack.context) {
+        if let ent = NSEntityDescription.entity(forEntityName: "Pin", in: context) {
 
             // Create New Pin Object
-            let newPin = Pin(entity: ent, insertInto: stack?.context)
+            let newPin = Pin(entity: ent, insertInto: context)
             newPin.latitude = annotation.coordinate.latitude
             newPin.longitude = annotation.coordinate.longitude
 
@@ -167,23 +217,25 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
                 performUIUpdatesOnMain {
 
-                    var photoTemp: Photo?
+                    // Take 'results' and implement for-loop.
+
+                    var photoCoreData: Photo?
 
                     print("recognizeLongPress(): Get photos for selected pin.")
 
                     // **** Core Data: Add web URLs and Pin(s) only at this point...
-                    if photoTemp == nil {
+                    if photoCoreData == nil {
                         for photo in results! {
-                            if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: self.stack.context) {
-                                photoTemp = Photo(entity: entity, insertInto: self.stack.context)
-                                photoTemp?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
-                                photoTemp?.pin = newPin
+                            if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
+                                photoCoreData = Photo(entity: entity, insertInto: context)
+                                photoCoreData?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
+                                photoCoreData?.pin = newPin
                             }
                         }
                     }
-                    print("reload complete")
+                    print("Flickr Photo URL String Download Complete, save context")
                     // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
-                    self.stack.save()
+                    delegate.stack.save()
                 }
                 return
             } // End of Flickr Closure
@@ -242,55 +294,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
 
 
-    // MARK: - Core Data
-    func pinFetchRequest() -> [Pin] {
-
-        // 2. Create a fetchrequest
-        let fr = NSFetchRequest<NSFetchRequestResult>(entityName: "Pin")
-        fr.sortDescriptors = [NSSortDescriptor(key: "latitude", ascending: true), NSSortDescriptor(key: "longitude", ascending: true)]
-
-        // 3. Create the FetchedResultsController
-        fetchedResultsController = NSFetchedResultsController(fetchRequest: fr, managedObjectContext: stack.context, sectionNameKeyPath: nil, cacheName: nil)
-
-        // fetch desired fetchRequest of the saved annotations
-        do {
-            return try stack.context.fetch(fr) as! [Pin]
-        } catch {
-            print("pinFetchRequest(): Error fetching the saved annotations")
-            return [Pin]()
-        }
-
-    }
-
-
-
-    func getPin(latitude: CLLocationDegrees, longitude: CLLocationDegrees) -> [Pin]? {
-        let fetchRequest = getFetchRequest(entityName: "Pin", format: "latitude = %@ && longitude = %@", argArray: [latitude, longitude])
-
-        let pins: [Pin]? = fetchPin(fetchRequest: fetchRequest)
-        return pins
-    }
-
-    func fetchPin(fetchRequest: NSFetchRequest<NSFetchRequestResult>) -> [Pin]? {
-        var pins: [Pin]?
-
-        do {
-            pins = try self.stack?.context.fetch(fetchRequest) as? [Pin]
-
-        } catch {
-            print("fetchPin(): Error, pin not found")
-        }
-        return pins
-    }
-
-    func getFetchRequest(entityName: String, format: String, argArray: [Any]?) -> NSFetchRequest<NSFetchRequestResult> {
-        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
-
-        let predicate = NSPredicate(format: format, argumentArray: argArray)
-        fetchRequest.predicate = predicate
-
-        return fetchRequest
-    }
 
 
 

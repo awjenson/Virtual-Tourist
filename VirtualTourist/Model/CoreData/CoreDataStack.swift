@@ -10,7 +10,13 @@
 
 // MARK: - From Udacity's Cool Notes App
 
+import UIKit
 import CoreData
+
+// MARK: - GLOBAL VARIABLES
+
+let delegate = UIApplication.shared.delegate as! AppDelegate
+let context = (UIApplication.shared.delegate as! AppDelegate).stack.context
 
 // MARK: - CoreDataStack
 

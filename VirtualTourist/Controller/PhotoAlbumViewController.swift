@@ -24,7 +24,6 @@ import CoreData
  */
 
 
-
 // See CoreDataViewController for Collection View Methods
 
 class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
@@ -44,15 +43,10 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     let itemsPerRow: CGFloat = 3
     let sectionInsets = UIEdgeInsets(top: 50.0, left: 20.0, bottom: 50, right: 20.0)
 
-
-    // searches is an array that will keep track of all the searches made in the app
-    // Core Data Stack
-    var stack: CoreDataStack?
     let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
 
     // Pin
     var pinSelected: Pin? = nil
-//    var selectedPinLocation = CLLocationCoordinate2D()
 
     // Photos
     var photos: [Photo] = [Photo]() // Photo array
@@ -101,17 +95,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     // Setup FetchResult, Predicate, and FetchResultController
     func setupFetchResultWithPredicateAndFetchResultController() {
 
-//        // Similar to Udacity's Cool Notes, Create (1) FetchRequest and (2) FetchRequestController in viewDidLoad of the PhotoAlbumViewController
-//        // (1/2) Create a fetchrequest
-//        let fr = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
-//        // Udacity comment: "So far we have a search that will match ALL notes. However, we're only interested in those within the selected Photo data: NSPredicate to the rescue!"
-//        // For (format: "pin = %", pinSelected!), "pin" is from the the Relationships section of the Photo Entity. And "pinSelected!" is the specific Pin (Entity) that was selected.
-//        fr.predicate = NSPredicate(format: "pin = %@", pinSelected!)
-//        fr.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
-//
-//        // (2/2) Create the FetchedResultsController
-//        fetchedResultsController = NSFetchedResultsController(fetchRequest: fr, managedObjectContext: (stack!.context), sectionNameKeyPath: nil, cacheName: nil)
-
+        // not necessary to sort photos, but I did it anyway since this is what Udacity's Cool Notes app did.
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
         fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
     }
@@ -121,7 +105,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
         do {
             print("photosFetchRequest(): Trying to fetch photos")
-            return try stack!.context.fetch(fetchRequest) as! [Photo]
+            return try context.fetch(fetchRequest) as! [Photo]
 
         } catch {
             print("There was an error fetching the photos from the selected pin")
@@ -186,27 +170,10 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
 
         let photo = photos[indexPath.row]
-        stack?.context.delete(photo)
+        context.delete(photo)
         photos.remove(at: indexPath.row)
         collectionView.reloadData()
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     // MARK: - IB Action Methods
@@ -261,8 +228,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                 // **** Core Data: Add web URLs and Pin(s) only at this point...
                 if photoTemp == nil {
                     for photo in results! {
-                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: (self.stack?.context)!) {
-                            photoTemp = Photo(entity: entity, insertInto: (self.stack?.context)!)
+                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
+                            photoTemp = Photo(entity: entity, insertInto: context)
                             photoTemp?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
                             photoTemp?.pin = self.pinSelected
                         }
@@ -270,7 +237,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                 }
                 print("reload complete")
                 // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
-                self.stack?.save()
+                delegate.stack.save()
 
                 // reload images on collection view
                 self.collectionView.reloadData()
@@ -287,18 +254,17 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
 
         do {
-            let photos = try stack?.context.fetch(fetchRequest) as! [Photo]
+            let photos = try context.fetch(fetchRequest) as! [Photo]
             for photo in photos {
                 // delete NSManagedObject
-                stack?.context.delete(photo)
+                context.delete(photo)
             }
         } catch {
                 print("deleteAllPhotos: Error deleting photo")
         }
-
     }
 
-} // End of Class PhotoAlbumViewController
+} // *** End of PhotoAlbumViewController Class ***
 
 
 extension PhotoAlbumViewController: MKMapViewDelegate {
@@ -317,7 +283,6 @@ extension PhotoAlbumViewController: MKMapViewDelegate {
 extension PhotoAlbumViewController: UICollectionViewDelegateFlowLayout {
     // From Ray Wenderlich Tutorials on Collection Views...
     // Collection View Layout
-
 
     // 1
     // This is responsible for telling the layout the size of a given cell.

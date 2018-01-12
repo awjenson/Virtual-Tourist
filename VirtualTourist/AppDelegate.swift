@@ -16,10 +16,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // MARK: - From Udacity's Cool Notes App
     let stack = CoreDataStack(modelName: "DataModel")!
-    let delegate = UIApplication.shared.delegate as! AppDelegate
-    let context = (UIApplication.shared.delegate as! AppDelegate).stack.context
-
-
 
     // MARK: - Udacity's Code from Lesson 1: Simple Persistance
     func checkIfFirstLaunch() {
@@ -29,10 +25,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print("This is the first launch ever!")
         }
     }
-
-
-
-
 
 
     // MARK: - App Delegate Functions
