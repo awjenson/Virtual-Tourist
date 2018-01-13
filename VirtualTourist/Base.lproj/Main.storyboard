@@ -24,28 +24,54 @@
                             <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" animating="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="BW8-XO-vRR">
                                 <rect key="frame" x="169" y="315" width="37" height="37"/>
                             </activityIndicatorView>
+                            <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="zve-55-Ji2">
+                                <rect key="frame" x="0.0" y="623" width="375" height="44"/>
+                                <items>
+                                    <barButtonItem style="plain" id="Djk-e5-yiy">
+                                        <button key="customView" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" id="TX9-Ab-Qbj">
+                                            <rect key="frame" x="16" y="7" width="343" height="30"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                            <color key="backgroundColor" red="1" green="0.14913141730000001" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                            <state key="normal" title="Tap a Pin to Delete From Map">
+                                                <color key="titleColor" red="0.99999600649999998" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                            </state>
+                                        </button>
+                                    </barButtonItem>
+                                </items>
+                            </toolbar>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
+                            <constraint firstItem="zve-55-Ji2" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" id="9gH-KW-Wcn"/>
+                            <constraint firstItem="zve-55-Ji2" firstAttribute="bottom" secondItem="6Tk-OE-BBY" secondAttribute="bottom" id="BC4-0Z-ksn"/>
                             <constraint firstItem="BW8-XO-vRR" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="Rbm-Ub-bVP"/>
                             <constraint firstItem="gci-ZC-eZ4" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="VKF-JW-pJM"/>
                             <constraint firstAttribute="trailing" secondItem="gci-ZC-eZ4" secondAttribute="trailing" id="Ybu-1L-w58"/>
                             <constraint firstItem="gci-ZC-eZ4" firstAttribute="bottom" secondItem="6Tk-OE-BBY" secondAttribute="bottom" id="eiJ-Wy-dts"/>
                             <constraint firstItem="gci-ZC-eZ4" firstAttribute="centerX" secondItem="BW8-XO-vRR" secondAttribute="centerX" id="hpE-b3-yyg"/>
+                            <constraint firstItem="zve-55-Ji2" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="jCl-Sf-LXi"/>
                             <constraint firstItem="gci-ZC-eZ4" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="kTW-c5-Dtb"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
-                    <navigationItem key="navigationItem" id="vcl-Iu-NFe"/>
+                    <navigationItem key="navigationItem" id="vcl-Iu-NFe">
+                        <barButtonItem key="rightBarButtonItem" title="Item" id="wDT-0A-SRX">
+                            <connections>
+                                <action selector="editButtonTapped:" destination="BYZ-38-t0r" id="gda-4c-02Y"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                     <connections>
                         <outlet property="activityIndicator" destination="BW8-XO-vRR" id="4i9-wc-jbb"/>
+                        <outlet property="editButton" destination="wDT-0A-SRX" id="4XF-bs-PCI"/>
+                        <outlet property="editModeLabelButton" destination="TX9-Ab-Qbj" id="00N-Bd-eqc"/>
                         <outlet property="mapView" destination="gci-ZC-eZ4" id="HrD-Bf-HLh"/>
                         <segue destination="vBG-Sc-5PU" kind="show" identifier="PinTappedSegue" id="R1g-UC-zvT"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="475.5" y="133.5"/>
+            <point key="canvasLocation" x="474.39999999999998" y="132.68365817091455"/>
         </scene>
         <!--Photo Album View Controller-->
         <scene sceneID="Eeq-Ff-29u">
@@ -109,7 +135,7 @@
                                         <button key="customView" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" id="xSQ-NX-acW">
                                             <rect key="frame" x="16" y="7" width="343" height="30"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                            <state key="normal" title="Refresh Images"/>
+                                            <state key="normal" title="Tap to Refresh Images"/>
                                             <connections>
                                                 <action selector="refreshImagesButtonTapped:" destination="vBG-Sc-5PU" eventType="touchUpInside" id="xIc-Yh-CsL"/>
                                             </connections>

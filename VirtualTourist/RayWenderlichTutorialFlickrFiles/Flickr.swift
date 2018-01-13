@@ -30,7 +30,7 @@ class Flickr {
     // MARK: Flickr API (URL Set-up)
 
     // Step 1 - CREATE URL (to find a random page)
-    func searchFlickrForCoordinates(pin: Pin,completionSearchFlickrForCoordinates: @escaping (_ results: [[String: AnyObject]]?, _ errorString : String?) -> Void) {
+    func searchFlickrForCoordinates(pin: Pin,completionSearchFlickrForCoordinates: @escaping (_ arrayOfImageUrlStrings: [[String: AnyObject]]?, _ errorString : String?) -> Void) {
 
         // This is creating the URL to set-up the GET Request for the Flickr API
 
@@ -166,30 +166,6 @@ class Flickr {
                     return
                 }
 
-//                //////////////////////////////////////////////////////
-//
-//                var flickrPhotos = [FlickrPhoto]()
-//
-//                for photoObject in photoArray {
-//                    guard let photoID = photoObject["id"] as? String,
-//                        let farm = photoObject["farm"] as? Int ,
-//                        let server = photoObject["server"] as? String ,
-//                        let secret = photoObject["secret"] as? String else {
-//                            break
-//                    }
-//                    let flickrPhoto = FlickrPhoto(photoID: photoID, farm: farm, server: server, secret: secret)
-//
-//                    guard let url = flickrPhoto.flickrImageURL(),
-//                        let imageData = try? Data(contentsOf: url as URL) else {
-//                            break
-//                    }
-//
-//                    if let image = UIImage(data: imageData) {
-//                        flickrPhoto.thumbnail = image
-//                        flickrPhotos.append(flickrPhoto)
-//                    }
-//                }
-
                 // send the photoArray data into the completionHandler, back to MainMapViewController
                 print("completion is successful, return 'results'")
                 completionSearchFlickrForCoordinates(photoArray, "")
@@ -303,6 +279,30 @@ class Flickr {
         // start the task!
         task.resume()
     }
+
+
+    // *** TASK FOR GET IMAGE DATA FROM URL STRING (PHOTOS) ***
+
+    func getDataFromUrlString(_ urlString: String, _ completionHandler: @escaping (_ imageData: Data?, _ error: String?) -> Void) {
+
+        let session = URLSession.shared
+
+        // Convert urlSring to URL
+        guard let url = URL(string: urlString) else {
+            print("taskForGetDataFromUrlString: Could not convert urlString to URL")
+            return }
+
+        let request = URLRequest(url: url)
+        let task = session.dataTask(with: request) { (data, response, error) in
+            guard error == nil else {
+                completionHandler(nil, error?.localizedDescription)
+                return
+            }
+            completionHandler(data, nil)
+        }
+        task.resume()
+    }
+
 
 
 

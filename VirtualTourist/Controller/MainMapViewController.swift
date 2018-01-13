@@ -21,6 +21,9 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    @IBOutlet weak var editButton: UIBarButtonItem!
+
+    @IBOutlet weak var editModeLabelButton: UIButton!
 
     // MARK: - Properties
     var currentPin: Pin?
@@ -30,6 +33,8 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
     // flickr is a reference to the object that will do the searching for you
     fileprivate let flickr = Flickr()
+    // Edit Mode used to delete pins
+    var isEditModeOn = false
 
     // Udacity comments, "When a new Pin is created, the Context sends a notification to the fetchedResultsController. fetchedResultsController uses a delegate (NSFetchedResultsControllerDelegate) to communiate to MainMapViewController.
     var fetchedResultsController : NSFetchedResultsController<NSFetchRequestResult>? {
@@ -52,6 +57,9 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        editButton.title = "Edit"
+        editModeLabelButton.isHidden = true
+        activityIndicator.isHidden = false
         activityIndicator.startAnimating()
 
         // Path to Data Model
@@ -74,9 +82,9 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
         super.viewDidAppear(true)
 
         activityIndicator.stopAnimating()
-        activityIndicator.hidesWhenStopped = true
-
+        activityIndicator.isHidden = true
     }
+
 
     // MARK: - Core Data Methods
 
@@ -90,6 +98,7 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
             // pin.coordinate created in initialization inside Pin+CoreDataClass file
             annotation.coordinate = pin.coordinate
             mapView.addAnnotation(annotation)
+
         }
     }
 
@@ -112,49 +121,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
             return [Pin]()
         }
     }
-
-    // Repeat Code (see above)
-//    func getPin(latitude: CLLocationDegrees, longitude: CLLocationDegrees) -> [Pin]? {
-//        let fetchRequest = getFetchRequest(entityName: "Pin", format: "latitude = %@ && longitude = %@", argArray: [latitude, longitude])
-//
-//        let pins: [Pin]? = fetchPin(fetchRequest: fetchRequest)
-//        return pins
-//    }
-//
-//    func fetchPin(fetchRequest: NSFetchRequest<NSFetchRequestResult>) -> [Pin]? {
-//        var pins: [Pin]?
-//
-//        do {
-//            pins = try context.fetch(fetchRequest) as? [Pin]
-//
-//        } catch {
-//            print("fetchPin(): Error, pin not found")
-//        }
-//        return pins
-//    }
-//
-//
-//    func getFetchRequest(entityName: String, format: String, argArray: [Any]?) -> NSFetchRequest<NSFetchRequestResult> {
-//        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
-//
-//        let predicate = NSPredicate(format: format, argumentArray: argArray)
-//        fetchRequest.predicate = predicate
-//
-//        return fetchRequest
-//    }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -194,12 +160,12 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
 
             // **** Cordinates Saved, Begin Flickr API Request
-            flickr.searchFlickrForCoordinates(pin: newPin) { (results, errorString) in
+            flickr.searchFlickrForCoordinates(pin: newPin) { (arrayOfImageUrlStrings, errorString) in
 
                 print("Running network request on the main thread? (It should be false b/c inside searchFlickrForCoordinates closure): \(Thread.isMainThread)")
 
                 /* GUARD: Was there an error? */
-                guard (results != nil) else {
+                guard (arrayOfImageUrlStrings != nil) else {
                     // Error...
                     // display the errorString using createAlert
                     // The app gracefully handles a failure to download student locations.
@@ -215,9 +181,8 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
                 print("Successfully obtained Photos from Flickr")
 
+                // Take 'arrayOfImageUrlStrings' and implement for-loop to save to context on the main thread.
                 performUIUpdatesOnMain {
-
-                    // Take 'results' and implement for-loop.
 
                     var photoCoreData: Photo?
 
@@ -225,17 +190,24 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
                     // **** Core Data: Add web URLs and Pin(s) only at this point...
                     if photoCoreData == nil {
-                        for photo in results! {
+                        for imageUrlString in arrayOfImageUrlStrings! {
                             if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
                                 photoCoreData = Photo(entity: entity, insertInto: context)
-                                photoCoreData?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
+
+                                // Save image URL String to the "Photo" Entity
+                                photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
                                 photoCoreData?.pin = newPin
+
                             }
                         }
                     }
+
+                    // Save from URL String to NSData
+                    print("photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
                     print("Flickr Photo URL String Download Complete, save context")
                     // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
                     delegate.stack.save()
+
                 }
                 return
             } // End of Flickr Closure
@@ -258,19 +230,43 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
 
         let annotation = view.annotation
+        let lat = annotation?.coordinate.latitude
+        let long = annotation?.coordinate.longitude
+
         selectedPin = nil
+        let fetchRequest:NSFetchRequest<Pin> = Pin.fetchRequest()
+        do {
+            let fetchResults = try context.fetch(fetchRequest)
 
-        for pin in pins {
-            if annotation!.coordinate.latitude == pin.coordinate.latitude && annotation!.coordinate.longitude == pin.coordinate.longitude {
+            for pin in fetchResults as [Pin] {
 
-                selectedPin = pin
+                if pin.latitude == lat!, pin.longitude == long! {
+                    selectedPin = pin
+                    print("Found pin info.")
 
-                // perform segue to next VC
-                performSegue(withIdentifier: "PinTappedSegue", sender: self)
+                    if isEditModeOn == true {
+                        // In edit mode, delete selected pin
+                        performUIUpdatesOnMain {
+                            context.delete(self.selectedPin!)
+                            delegate.stack.save()
+                            self.mapView.removeAnnotation(annotation!)
+                            print("Deleted selected pin")
+                        }
 
-                // Deselect the pin that was tapped most recently
-                mapView.deselectAnnotation(annotation, animated: true)
-            }
+                    } else {
+                        // Not in edit mode, so segue
+                        // perform segue to next VC
+                        performUIUpdatesOnMain {
+                            self.performSegue(withIdentifier: "PinTappedSegue", sender: self)
+
+                            // Deselect the pin that was tapped most recently
+                            mapView.deselectAnnotation(annotation, animated: true)
+                        }
+                    }   // end of 'else'
+                }   // end of 'if pin.latitude == lat!, pin.longitude == long!'
+            }   // end of 'for pin in fetchResults'
+        } catch {
+            print("mapView didSelect: Error \(error)")
         }
     }
 
@@ -287,6 +283,23 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
 
         default:
             print("Could not find segue")
+        }
+    }
+
+    // MARK: - IBActions
+
+    @IBAction func editButtonTapped(_ sender: UIBarButtonItem) {
+
+        // isEditMode initially set to 'false'
+        // set to opposite when tapped
+        isEditModeOn = !isEditModeOn
+
+        if isEditModeOn {
+            editButton.title = "Done"
+            editModeLabelButton.isHidden = false
+        } else {
+            editButton.title = "Edit"
+            editModeLabelButton.isHidden = true
         }
     }
 

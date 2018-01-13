@@ -43,6 +43,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     let itemsPerRow: CGFloat = 3
     let sectionInsets = UIEdgeInsets(top: 50.0, left: 20.0, bottom: 50, right: 20.0)
 
+    var photosSelected = false
+
     let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
 
     // Pin
@@ -50,7 +52,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
     // Photos
     var photos: [Photo] = [Photo]() // Photo array
-    var selectedIndex = [IndexPath]()
+    var selectedIndexPath = [IndexPath]()
 
 
     // MARK: - Lifecycle Methods
@@ -75,6 +77,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         // Fetch photos from selected pin
         photos = photosFetchRequest()
     }
+
+
 
 
     // MARK: - Methods
@@ -104,7 +108,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func photosFetchRequest() -> [Photo] {
 
         do {
-            print("photosFetchRequest(): Trying to fetch photos")
             return try context.fetch(fetchRequest) as! [Photo]
 
         } catch {
@@ -128,14 +131,16 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                         numberOfItemsInSection section: Int) -> Int {
 
         //        return pinPassedOver.searchResults.count
+        print("Photos count in Collection View: \(photos.count)")
         return photos.count
     }
 
     //3
     // ************ This is a unique method when it comes to Core Data
-    // This is a placeholder method just to return a blank cell – you’ll be populating it later. Note that collection views require you to have registered a cell with a reuse identifier, or a runtime error will occur.
+    // once you have the URL for a photo you will need to download and display it inside the imageView for each cell.
     func collectionView(_ collectionView: UICollectionView,
                         cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+
 
         let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: "FlickrCell", for: indexPath) as! PhotoAlbumCollectionViewCell
@@ -144,25 +149,45 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         cell.imageView.image = UIImage(named: "defaultImage")
         cell.activityIndicator.startAnimating()
 
-        // Check if photo already exists in Core Data
-        if let photo = self.photos[indexPath.item].image {
-            print("cellForItemAt indexPath: Photo already exists, loading from Core Data")
+        let photo = photos[indexPath.row]
 
-            // Load on main queue
-            DispatchQueue.main.async {
-                if let image = UIImage(data: photo as Data) {
-                    cell.imageView.image = image
-                    // Stop animating activityIndicator
+        // *** CORE DATA: convert imageURL (String) to image (BinaryData [NSData]) ***
+
+        // if photo.imageData exists, then fetch results.
+
+        // Else, get image (Binary Data [NSData]) from photos.imageURL (String)
+        // photo.imageURL (String) -> photo.imageData
+        // photo.imageData = imageData (Type: Data)
+        // assign UIImage to cell.imageView.image (asynchronous)
+
+        if photo.image != nil {
+            performUIUpdatesOnMain {
+                cell.activityIndicator.stopAnimating()
+            }
+            cell.imageView.image = UIImage(data: photo.image! as Data)
+        } else {
+
+
+
+            // *** GETTING AN ERROR HERE when try to refresh pictures
+
+            print("photo.imageURL!: \(String(describing: photo.imageURL))")
+
+            flickr.getDataFromUrlString(photo.imageURL!) { (results, error) in
+
+                guard let imageData = results else {
+                    print("flickr.getDataFromUrlString: Unable to get image data from image URL String")
+                    return
+                }
+
+                performUIUpdatesOnMain {
+                    photo.image = imageData as NSData?
                     cell.activityIndicator.stopAnimating()
+                    cell.imageView.image = UIImage(data: photo.image! as Data)
                 }
             }
-        } else {
-            // photo does not already exist, download from Flickr API
-            print("cellForItemAt indexPath: Photo does NOT already exist, loading from Flickr API")
-            loadNewPhotosAndSaveToCoreData()
         }
 
-        // configure the cell
         return cell
     }
 
@@ -180,8 +205,33 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
     @IBAction func refreshImagesButtonTapped(_ sender: UIButton) {
 
-        loadNewPhotosAndSaveToCoreData()
+        if photosSelected {
+            removeSelectedPhotos()
+            self.collectionView.reloadData()
+            photosSelected = false
 
+        } else {
+            for photo in photos {
+                context.delete(photo)
+            }
+            delegate.stack.save()
+            // Flick API Network Request
+            loadNewPhotosAndSaveToCoreData()
+        }
+    }
+
+    func removeSelectedPhotos() {
+        if selectedIndexPath.count > 0 {
+            for indexPath in selectedIndexPath {
+                let photo = photos[indexPath.row]
+                context.delete(photo)
+                self.photos.remove(at: indexPath.row)
+                self.collectionView.deleteItems(at: [indexPath as IndexPath])
+                print("photo at row \(indexPath.row) deleted")
+            }
+            delegate.stack.save()
+        }
+        selectedIndexPath = [IndexPath]()
     }
 
     // MARK: - Methods
@@ -189,7 +239,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func loadNewPhotosAndSaveToCoreData() {
 
         // First, delete existing photos
-        deleteAllPhotos()
+//        deleteAllPhotos()
 
         // Second, download new photos
 
@@ -221,26 +271,27 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
             performUIUpdatesOnMain {
 
-                var photoTemp: Photo?
-
-                print("recognizeLongPress(): Get photos for selected pin.")
+                var photoCoreData: Photo?
 
                 // **** Core Data: Add web URLs and Pin(s) only at this point...
-                if photoTemp == nil {
+                if photoCoreData == nil {
+
+
                     for photo in results! {
                         if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
-                            photoTemp = Photo(entity: entity, insertInto: context)
-                            photoTemp?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
-                            photoTemp?.pin = self.pinSelected
+                            photoCoreData = Photo(entity: entity, insertInto: context)
+                            photoCoreData?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
+                            photoCoreData?.pin = self.pinSelected
                         }
                     }
                 }
-                print("reload complete")
+
                 // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
                 delegate.stack.save()
 
                 // reload images on collection view
                 self.collectionView.reloadData()
+                print("loadNewPhotosAndSaveToCoreData(): reload complete, refresh collection view")
             }
             return
         } // End of Flickr Closure
