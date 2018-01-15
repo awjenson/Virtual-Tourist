@@ -192,7 +192,7 @@ class Flickr {
         // flickr URL from Method Parameters: URL
         let request = URLRequest(url: flickrURLFromParameters(methodParameters))
 
-        print("URL request: \(request)")
+        print("taskForGETRandomPage, URL request: \(request)")
 
         let task = session.dataTask(with: request) { data, response, error in
 
@@ -234,16 +234,7 @@ class Flickr {
 
     private func taskForGETPhotosFromRandomPage(_ pin: Pin, _ methodParameters: [String: AnyObject], withPageNumber: Int, completionGETPhotosFromRandomPageToParseJSON:@escaping (_ data: Data?, _ error: NSError?) -> Void) {
 
-        // add the page to the method's parameters
-
-
-
-//
-//
-//        var methodParametersWithPageNumber = methodParameters
-//        methodParametersWithPageNumber[Constants.FlickrParameterKeys.Page] = withPageNumber as AnyObject?
-//        print("Method with Page Number")
-//        print(methodParametersWithPageNumber)
+        // add the random page number to the method's parameters
 
         let methodParameters = [
             Constants.FlickrParameterKeys.Method: Constants.FlickrParameterValues.SearchMethod,
@@ -253,15 +244,16 @@ class Flickr {
             Constants.FlickrParameterKeys.Extras: Constants.FlickrParameterValues.MediumURL,
             Constants.FlickrParameterKeys.Format: Constants.FlickrParameterValues.ResponseFormat,
             Constants.FlickrParameterKeys.NoJSONCallback: Constants.FlickrParameterValues.DisableJSONCallback,
-            Constants.FlickrParameterKeys.Page: String(withPageNumber),
             Constants.FlickrParameterKeys.PhotosPerPage: Constants.FlickrParameterValues.PhotosPerPage
-            ]
+            ] as [String : AnyObject]
 
         // create session and request
         let session = URLSession.shared
-        let request = URLRequest(url: flickrURLFromParameters(methodParameters as [String : AnyObject]))
 
-        print("URL request: \(request)")
+        let request = URLRequest(url: flickrURLFromParametersAndRandomPage(methodParameters, randomPage: withPageNumber))
+
+        print("taskForGETPhotosFromRandomPage, methods: \(flickrURLFromParametersAndRandomPage)")
+        print("taskForGETPhotosFromRandomPage, URL request: \(request)")
 
         // create network request
         let task = session.dataTask(with: request) { (data, response, error) in
@@ -392,7 +384,7 @@ class Flickr {
 
     // MARK: - Helper for Creating a URL from Parameters
 
-    // Returns a URL
+    // Returns a URL (Without Random Page)
     private func flickrURLFromParameters(_ parameters: [String:AnyObject]) -> URL {
 
         var components = URLComponents()
@@ -405,6 +397,27 @@ class Flickr {
             let queryItem = URLQueryItem(name: key, value: "\(value)")
             components.queryItems!.append(queryItem)
         }
+
+        return components.url!
+    }
+
+    // Returns a URL (With Random Page Appended at End)
+    private func flickrURLFromParametersAndRandomPage(_ parameters: [String:AnyObject], randomPage: Int) -> URL {
+
+        var components = URLComponents()
+        components.scheme = Constants.Flickr.APIScheme
+        components.host = Constants.Flickr.APIHost
+        components.path = Constants.Flickr.APIPath
+        components.queryItems = [URLQueryItem]()
+
+        for (key, value) in parameters {
+            let queryItem = URLQueryItem(name: key, value: "\(value)")
+            components.queryItems!.append(queryItem)
+        }
+
+        // Append Random Page
+        let queryItemRandomPage = URLQueryItem(name: Constants.FlickrParameterKeys.Page, value: String(randomPage))
+        components.queryItems?.append(queryItemRandomPage)
 
         return components.url!
     }

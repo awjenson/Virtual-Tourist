@@ -257,6 +257,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         // Start over with an empty array of type Photo
         photos = [Photo]()
 
+        collectionView.reloadData()
+
         // load new photos
         loadMoreUrlStringsForPhotos()
     }
@@ -267,8 +269,13 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
         var photoCoreData: Photo?
 
+        guard let pinSelected = pinSelected else {
+            print("loadMoreUrlStringsForPhotos: pinSelected is nil")
+            return
+        }
+
         // **** Cordinates Saved, Begin Flickr API Request
-        flickr.searchFlickrForCoordinates(pin: pinSelected!) { (arrayOfImageUrlStrings, errorString) in
+        flickr.searchFlickrForCoordinates(pin: pinSelected) { (arrayOfImageUrlStrings, errorString) in
 
             print("Running network request on the main thread? (It should be false b/c inside searchFlickrForCoordinates closure): \(Thread.isMainThread)")
 
@@ -293,8 +300,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
                 for imageUrlString in arrayOfImageUrlStrings! {
 
-                    print("How many times does this happen?")
-
                     if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
 
                         photoCoreData = Photo(entity: entity, insertInto: context)
@@ -303,6 +308,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                     }
                 }
 
+                // save new url strings to stack
                 delegate.stack.save()
 
 
@@ -327,11 +333,11 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 //                delegate.stack.save()
 //
 //                // Photo URL Strings uploaded from flickr, reload collection view in order to trigger cellForRowAt in order to take new URL Strings and convert them to NS Data objects to be used to display 20 UIImages.
-                self.collectionView.reloadData()
-                print("Did we reload collection view?")
 
+                print("loadMoreUrlStringsForPhotos(): Photos updated, re-call fetchPhotos() to update collection view")
+                self.fetchPhotos()
 
-            }
+            } // End of performUIUpdatesOnMain
             return
         } // End of Flickr Closure
 
