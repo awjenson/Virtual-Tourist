@@ -41,7 +41,7 @@ class Flickr {
             Constants.FlickrParameterKeys.Extras: Constants.FlickrParameterValues.MediumURL,
             Constants.FlickrParameterKeys.Format: Constants.FlickrParameterValues.ResponseFormat,
             Constants.FlickrParameterKeys.NoJSONCallback: Constants.FlickrParameterValues.DisableJSONCallback,
-            Constants.FlickrParameterKeys.PerPage: Constants.FlickrParameterValues.PerPage
+            Constants.FlickrParameterKeys.PhotosPerPage: Constants.FlickrParameterValues.PhotosPerPage
         ]
 
 
@@ -112,7 +112,7 @@ class Flickr {
 
             // *** NEXT, Call next task to GET Photos
 
-            self.taskForGETPhotosFromRandomPage(methodParameters as [String : AnyObject], withPageNumber: randomPage, completionGETPhotosFromRandomPageToParseJSON: { (data, error) in
+            self.taskForGETPhotosFromRandomPage(pin, methodParameters as [String : AnyObject], withPageNumber: randomPage, completionGETPhotosFromRandomPageToParseJSON: { (data, error) in
 
                 // Inside Completion.
                 // Parse data and store in static property so that it is ready for use when we segue to PhotoAlbumViewController
@@ -232,15 +232,34 @@ class Flickr {
 
     // Second GET Request: Used to Retrieve Photos from the Random Page
 
-    private func taskForGETPhotosFromRandomPage(_ methodParameters: [String: AnyObject], withPageNumber: Int, completionGETPhotosFromRandomPageToParseJSON:@escaping (_ data: Data?, _ error: NSError?) -> Void) {
+    private func taskForGETPhotosFromRandomPage(_ pin: Pin, _ methodParameters: [String: AnyObject], withPageNumber: Int, completionGETPhotosFromRandomPageToParseJSON:@escaping (_ data: Data?, _ error: NSError?) -> Void) {
 
         // add the page to the method's parameters
-        var methodParametersWithPageNumber = methodParameters
-        methodParametersWithPageNumber[Constants.FlickrParameterKeys.Page] = withPageNumber as AnyObject?
+
+
+
+//
+//
+//        var methodParametersWithPageNumber = methodParameters
+//        methodParametersWithPageNumber[Constants.FlickrParameterKeys.Page] = withPageNumber as AnyObject?
+//        print("Method with Page Number")
+//        print(methodParametersWithPageNumber)
+
+        let methodParameters = [
+            Constants.FlickrParameterKeys.Method: Constants.FlickrParameterValues.SearchMethod,
+            Constants.FlickrParameterKeys.APIKey: Constants.FlickrParameterValues.APIKey,
+            Constants.FlickrParameterKeys.BoundingBox: pinCoordinatesBBoxString(lat: pin.coordinate.latitude, long: pin.coordinate.longitude),
+            Constants.FlickrParameterKeys.SafeSearch: Constants.FlickrParameterValues.UseSafeSearch,
+            Constants.FlickrParameterKeys.Extras: Constants.FlickrParameterValues.MediumURL,
+            Constants.FlickrParameterKeys.Format: Constants.FlickrParameterValues.ResponseFormat,
+            Constants.FlickrParameterKeys.NoJSONCallback: Constants.FlickrParameterValues.DisableJSONCallback,
+            Constants.FlickrParameterKeys.Page: String(withPageNumber),
+            Constants.FlickrParameterKeys.PhotosPerPage: Constants.FlickrParameterValues.PhotosPerPage
+            ]
 
         // create session and request
         let session = URLSession.shared
-        let request = URLRequest(url: flickrURLFromParameters(methodParametersWithPageNumber))
+        let request = URLRequest(url: flickrURLFromParameters(methodParameters as [String : AnyObject]))
 
         print("URL request: \(request)")
 

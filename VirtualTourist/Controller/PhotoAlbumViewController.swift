@@ -181,11 +181,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func collectionView(_ collectionView: UICollectionView,
                         cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 
-        if photos.count == 0 {
-            print("Are we inside here with 0 photos?")
-            loadMoreUrlStringsForPhotos()
-        }
-
         let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: "FlickrCell", for: indexPath) as! PhotoAlbumCollectionViewCell
 
@@ -229,7 +224,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                         // Display new images in Collection View
                         cell.activityIndicator.stopAnimating()
                         cell.imageView.image = image
-                        collectionView.reloadData()
                         print("cellForItemAt: Did we get here?")
                     })
             })
@@ -263,14 +257,15 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         // Start over with an empty array of type Photo
         photos = [Photo]()
 
-
         // load new photos
         loadMoreUrlStringsForPhotos()
-
     }
+
 
     // MARK: Fetch Photos
     func loadMoreUrlStringsForPhotos() {
+
+        var photoCoreData: Photo?
 
         // **** Cordinates Saved, Begin Flickr API Request
         flickr.searchFlickrForCoordinates(pin: pinSelected!) { (arrayOfImageUrlStrings, errorString) in
@@ -296,36 +291,52 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
             // Take 'arrayOfImageUrlStrings' and implement for-loop to save to context on the main thread.
             performUIUpdatesOnMain {
 
-                var photoCoreData: Photo?
+                for imageUrlString in arrayOfImageUrlStrings! {
 
-                print("recognizeLongPress(): Get photos for selected pin.")
+                    print("How many times does this happen?")
 
-                // **** Core Data: Add web URLs and Pin(s) only at this point...
-                if photoCoreData == nil {
-                    for imageUrlString in arrayOfImageUrlStrings! {
-                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
-                            photoCoreData = Photo(entity: entity, insertInto: context)
+                    if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
 
-                            // Save image URL String to the "Photo" Entity
-                            photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
-                            photoCoreData?.pin = self.pinSelected
-                        }
+                        photoCoreData = Photo(entity: entity, insertInto: context)
+                        photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
+                        photoCoreData?.pin = self.pinSelected!
                     }
                 }
 
-                print("photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
-                print("Flickr Photo URL String Download Complete, save context")
-                // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
                 delegate.stack.save()
 
-                // Photo URL Strings uploaded from flickr, reload collection view in order to trigger cellForRowAt in order to take new URL Strings and convert them to NS Data objects to be used to display 20 UIImages.
+
+//                print("recognizeLongPress(): Get photos for selected pin.")
+//
+//                // **** Core Data: Add web URLs and Pin(s) only at this point...
+//                if photoCoreData == nil {
+//                    for imageUrlString in arrayOfImageUrlStrings! {
+//                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
+//                            photoCoreData = Photo(entity: entity, insertInto: context)
+//
+//                            // Save image URL String to the "Photo" Entity
+//                            photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
+//                            photoCoreData?.pin = self.pinSelected
+//                        }
+//                    }
+//                }
+//
+//                print("photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
+//                print("Flickr Photo URL String Download Complete, save context")
+//                // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
+//                delegate.stack.save()
+//
+//                // Photo URL Strings uploaded from flickr, reload collection view in order to trigger cellForRowAt in order to take new URL Strings and convert them to NS Data objects to be used to display 20 UIImages.
                 self.collectionView.reloadData()
                 print("Did we reload collection view?")
+
+
             }
             return
         } // End of Flickr Closure
 
     }
+
 
     func removeSelectedPhotos() {
         if selectedIndexPath.count > 0 {
@@ -348,10 +359,12 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         // First, delete existing photos
 //        deleteAllPhotos()
 
-        for photo in photos {
-            // delete all photos from Core Data
-            context.delete(photo)
-        }
+//        for photo in photos {
+//            // delete all photos from Core Data
+//            context.delete(photo)
+//        }
+
+        photos.removeAll()
         // Save Core Data after all photos have been deleted
         delegate.stack.save()
         // Flick API Network Request
