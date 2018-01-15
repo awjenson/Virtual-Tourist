@@ -179,14 +179,14 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
                     return
                 }
 
-                print("Successfully obtained Photos from Flickr")
+                print("Successfully obtained Photos (arrayOfImageUrlStrings) from Flickr. Send to Context to be stored in Photo's imageURL attribute.")
 
                 // Take 'arrayOfImageUrlStrings' and implement for-loop to save to context on the main thread.
                 performUIUpdatesOnMain {
 
                     var photoCoreData: Photo?
 
-                    print("recognizeLongPress(): Get photos for selected pin.")
+                    print("MainMapView: recognizeLongPress(): Get photos for selected pin.")
 
                     // **** Core Data: Add web URLs and Pin(s) only at this point...
                     if photoCoreData == nil {
@@ -202,12 +202,10 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
                         }
                     }
 
-                    // Save from URL String to NSData
-                    print("photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
-                    print("Flickr Photo URL String Download Complete, save context")
+                    print("MainMapView: recognizeLongPress(): photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
+                    print("MainMapView: recognizeLongPress(): Flickr Photo URL String Download Complete, save context")
                     // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
                     delegate.stack.save()
-
                 }
                 return
             } // End of Flickr Closure

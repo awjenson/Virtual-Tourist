@@ -68,14 +68,15 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         setupMapAndDropPin()
 
         // Core Data setup for select Pin/Photos
-        setupFetchResultWithPredicateAndFetchResultController()
+//        setupFetchResultWithPredicateAndFetchResultController()
+        fetchPhotos()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
 
         // Fetch photos from selected pin
-        photos = photosFetchRequest()
+//        photos = photosFetchRequest()
     }
 
 
@@ -93,7 +94,46 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         mapView.setRegion(region, animated: true)
     }
 
+    func fetchPhotos() {
 
+        // Check if photos from the selected pin are in Core Data
+        // fetchRequest -> Photo, pin (if photos exist on selected pin)
+        // reload collectionView
+        // If not, then call Flickr API Network Request
+
+        let fetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
+        fetchRequest.sortDescriptors = []
+        // "pin" is located in DataModel.xcdatamodelId > Photo Entity > Relationships
+        fetchRequest.predicate = NSPredicate(format: "pin = %@", pinSelected!)
+        let fetchedResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
+
+        do {
+            try fetchedResultController.performFetch()
+        } catch {
+            let fetchError = error as NSError
+            print("Unable to Perform Fetch Request")
+            print("\(fetchError), \(fetchError.localizedDescription)")
+        }
+
+        if let data = fetchedResultController.fetchedObjects, data.count > 0 {
+            print("photos from core data fetched: \(data)")
+            // save data to photos property
+            photos = data
+            self.collectionView.reloadData()
+        } else {
+            // No photo data, call a new flickr API network request
+            getPhotosFromFlickr(pinSelected!)
+        }
+
+    }
+
+    func getPhotosFromFlickr(_ pinSelected: Pin) {
+
+        loadNewPhotosAndSaveToCoreData()
+        collectionView.reloadData()
+
+
+    }
 
 
     // Setup FetchResult, Predicate, and FetchResultController
@@ -101,7 +141,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
         // not necessary to sort photos, but I did it anyway since this is what Udacity's Cool Notes app did.
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
-        fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
+        fetchRequest.predicate = NSPredicate(format: "pin = %@", self.pinSelected!)
     }
 
 
@@ -141,53 +181,59 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func collectionView(_ collectionView: UICollectionView,
                         cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 
+        if photos.count == 0 {
+            print("Are we inside here with 0 photos?")
+            loadMoreUrlStringsForPhotos()
+        }
 
         let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: "FlickrCell", for: indexPath) as! PhotoAlbumCollectionViewCell
 
-        // Inital setup to display images
-        cell.imageView.image = UIImage(named: "defaultImage")
-        cell.activityIndicator.startAnimating()
-
         let photo = photos[indexPath.row]
+        let photoUrlString = photo.imageURL
+        cell.imageView.image = UIImage(named: "defaultImage")
 
-        // *** CORE DATA: convert imageURL (String) to image (BinaryData [NSData]) ***
+        // GET imageData: NSData
 
-        // if photo.imageData exists, then fetch results.
+        // Check if there is existing NSData (image) for Photo Entity in Database
+        //     NSData    : Photo.data
+        if let imageData = photo.image {
 
-        // Else, get image (Binary Data [NSData]) from photos.imageURL (String)
-        // photo.imageURL (String) -> photo.imageData
-        // photo.imageData = imageData (Type: Data)
-        // assign UIImage to cell.imageView.image (asynchronous)
+            let image = UIImage(data: imageData as Data)
+            cell.imageView.image = image
+            cell.activityIndicator.stopAnimating()
 
-        if photo.image != nil {
-            performUIUpdatesOnMain {
-                cell.activityIndicator.stopAnimating()
-            }
-            cell.imageView.image = UIImage(data: photo.image! as Data)
         } else {
+            print("cellForItemAt: We should enter here after clicking the Refresh Images Button to get image URLs, now we need to convert the 20 image URLs to 20 NSData objects that will convert into 20 Collection View Images")
 
+            // Display default image and start animating
+            cell.imageView.image = UIImage(named: "defaultImage")
+            cell.activityIndicator.startAnimating()
 
+            // Goal in closure is to return NSData that can be converted into UIImage
+            flickr.getDataFromUrlString(photoUrlString!, { (imageData, error) in
 
-            // *** GETTING AN ERROR HERE when try to refresh pictures
+                guard let image = UIImage(data: imageData!) else {
 
-            print("photo.imageURL!: \(String(describing: photo.imageURL))")
-
-            flickr.getDataFromUrlString(photo.imageURL!) { (results, error) in
-
-                guard let imageData = results else {
-                    print("flickr.getDataFromUrlString: Unable to get image data from image URL String")
+                    print("Error loading image in cellForItemAt: getDataFromUrlString: unable to get imageData from photoUrlString, \(String(describing: error?.debugDescription))")
                     return
                 }
 
-                performUIUpdatesOnMain {
-                    photo.image = imageData as NSData?
-                    cell.activityIndicator.stopAnimating()
-                    cell.imageView.image = UIImage(data: photo.image! as Data)
-                }
-            }
-        }
+                // imageData (NSData) was successfully returned
 
+                    performUIUpdatesOnMain({
+                        // Save to Core Data
+                        photo.image = imageData! as NSData
+                        delegate.stack.save()
+
+                        // Display new images in Collection View
+                        cell.activityIndicator.stopAnimating()
+                        cell.imageView.image = image
+                        collectionView.reloadData()
+                        print("cellForItemAt: Did we get here?")
+                    })
+            })
+        }
         return cell
     }
 
@@ -195,8 +241,10 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
 
         let photo = photos[indexPath.row]
-        context.delete(photo)
+        // delete photo from collectionView and Core Data
         photos.remove(at: indexPath.row)
+        context.delete(photo)
+        delegate.stack.save()
         collectionView.reloadData()
     }
 
@@ -205,19 +253,78 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
     @IBAction func refreshImagesButtonTapped(_ sender: UIButton) {
 
-        if photosSelected {
-            removeSelectedPhotos()
-            self.collectionView.reloadData()
-            photosSelected = false
+        print("Refresh Button Tapped.")
 
-        } else {
-            for photo in photos {
-                context.delete(photo)
-            }
-            delegate.stack.save()
-            // Flick API Network Request
-            loadNewPhotosAndSaveToCoreData()
+        // First, delete all existing photos from context
+        for photo in photos {
+            context.delete(photo)
         }
+
+        // Start over with an empty array of type Photo
+        photos = [Photo]()
+
+
+        // load new photos
+        loadMoreUrlStringsForPhotos()
+
+    }
+
+    // MARK: Fetch Photos
+    func loadMoreUrlStringsForPhotos() {
+
+        // **** Cordinates Saved, Begin Flickr API Request
+        flickr.searchFlickrForCoordinates(pin: pinSelected!) { (arrayOfImageUrlStrings, errorString) in
+
+            print("Running network request on the main thread? (It should be false b/c inside searchFlickrForCoordinates closure): \(Thread.isMainThread)")
+
+            /* GUARD: Was there an error? */
+            guard (arrayOfImageUrlStrings != nil) else {
+                // Error...
+                // display the errorString using createAlert
+                // The app gracefully handles a failure to download student locations.
+                print("Unsuccessful in obtaining photos of selected location from Flickr: \(String(describing: errorString))")
+
+                performUIUpdatesOnMain {
+                    // Display error to the user
+                    self.createAlert(title: "Error", message: "Failure to download photos of location.")
+                }
+                return
+            }
+
+            print("Successfully obtained Photos (arrayOfImageUrlStrings) from Flickr. Send to Context to be stored in Photo's imageURL attribute.")
+
+            // Take 'arrayOfImageUrlStrings' and implement for-loop to save to context on the main thread.
+            performUIUpdatesOnMain {
+
+                var photoCoreData: Photo?
+
+                print("recognizeLongPress(): Get photos for selected pin.")
+
+                // **** Core Data: Add web URLs and Pin(s) only at this point...
+                if photoCoreData == nil {
+                    for imageUrlString in arrayOfImageUrlStrings! {
+                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
+                            photoCoreData = Photo(entity: entity, insertInto: context)
+
+                            // Save image URL String to the "Photo" Entity
+                            photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
+                            photoCoreData?.pin = self.pinSelected
+                        }
+                    }
+                }
+
+                print("photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
+                print("Flickr Photo URL String Download Complete, save context")
+                // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
+                delegate.stack.save()
+
+                // Photo URL Strings uploaded from flickr, reload collection view in order to trigger cellForRowAt in order to take new URL Strings and convert them to NS Data objects to be used to display 20 UIImages.
+                self.collectionView.reloadData()
+                print("Did we reload collection view?")
+            }
+            return
+        } // End of Flickr Closure
+
     }
 
     func removeSelectedPhotos() {
@@ -227,7 +334,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                 context.delete(photo)
                 self.photos.remove(at: indexPath.row)
                 self.collectionView.deleteItems(at: [indexPath as IndexPath])
-                print("photo at row \(indexPath.row) deleted")
+                print("photo at row \(indexPath.row) deleted from Core Data and Collection View")
             }
             delegate.stack.save()
         }
@@ -241,6 +348,14 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         // First, delete existing photos
 //        deleteAllPhotos()
 
+        for photo in photos {
+            // delete all photos from Core Data
+            context.delete(photo)
+        }
+        // Save Core Data after all photos have been deleted
+        delegate.stack.save()
+        // Flick API Network Request
+
         // Second, download new photos
 
         /// **** Flickr Network Request ****
@@ -249,12 +364,12 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
         // Cordinates Saved, Begin Flickr API Request
         // **** Cordinates Saved, Begin Flickr API Request
-        flickr.searchFlickrForCoordinates(pin: pinSelected!) { (results, errorString) in
+        flickr.searchFlickrForCoordinates(pin: pinSelected!) { (arrayOfImageUrlStrings, errorString) in
 
             print("Running network request on the main thread? (It should be false b/c inside searchFlickrForCoordinates closure): \(Thread.isMainThread)")
 
             /* GUARD: Was there an error? */
-            guard (results != nil) else {
+            guard (arrayOfImageUrlStrings != nil) else {
                 // Error...
                 // display the errorString using createAlert
                 // The app gracefully handles a failure to download student locations.
@@ -267,7 +382,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                 return
             }
 
-            print("Successfully obtained Photos from Flickr")
+            // 'results' are an array of [[String: Any]]?
+            print("Successfully obtained Photos' results [[String: Any]]? from Flickr: \(arrayOfImageUrlStrings!)")
 
             performUIUpdatesOnMain {
 
@@ -276,8 +392,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                 // **** Core Data: Add web URLs and Pin(s) only at this point...
                 if photoCoreData == nil {
 
-
-                    for photo in results! {
+                    for photo in arrayOfImageUrlStrings! {
                         if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
                             photoCoreData = Photo(entity: entity, insertInto: context)
                             photoCoreData?.imageURL = photo[Constants.FlickrParameterValues.MediumURL] as? String
@@ -288,11 +403,14 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
                 // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
                 delegate.stack.save()
-
-                // reload images on collection view
+                print("Running network request on the main thread? (It should be true b/c inside performUIUpdatesOnMain): \(Thread.isMainThread). Reload Collection View.")
                 self.collectionView.reloadData()
-                print("loadNewPhotosAndSaveToCoreData(): reload complete, refresh collection view")
+
+                print("Inside func loadNewPhotosAndSaveToCoreData(): reload complete, refresh collection view")
+                print("Inside func loadNewPhotosAndSaveToCoreData(): Are photo.imageURL (String) nil?: \(String(describing: photoCoreData?.imageURL))")
             }
+
+
             return
         } // End of Flickr Closure
     }

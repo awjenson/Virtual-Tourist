@@ -26,7 +26,6 @@ class Flickr {
     // MARK: - Properties
 
 
-
     // MARK: Flickr API (URL Set-up)
 
     // Step 1 - CREATE URL (to find a random page)
@@ -283,6 +282,7 @@ class Flickr {
 
     // *** TASK FOR GET IMAGE DATA FROM URL STRING (PHOTOS) ***
 
+    // Closure returns Data so that you can convert it to UIImage
     func getDataFromUrlString(_ urlString: String, _ completionHandler: @escaping (_ imageData: Data?, _ error: String?) -> Void) {
 
         let session = URLSession.shared
@@ -302,6 +302,35 @@ class Flickr {
         }
         task.resume()
     }
+
+
+    // Load photos from URLs
+    func loadNewPhoto(_ indexPath: IndexPath, photosArray: [Photo], handler: @escaping (_ image: UIImage?, _ data: Data?, _ error: String) -> Void) {
+
+        let session = URLSession.shared
+
+        if photosArray.count > 0 {
+            if photosArray[indexPath.item].imageURL != nil {
+                let task = session.dataTask(with: URLRequest(url: URL(string: photosArray[indexPath.item].imageURL!)!), completionHandler: { data, response, downloadError in
+
+                    DispatchQueue.main.async(execute: {
+
+                        guard let data = data, let image = UIImage(data: data) else {
+                            print("Photo not loaded")
+                            return handler(nil, nil, "Photo not loaded")
+                        }
+
+                        return handler(image, data, "")
+                    })
+                })
+                task.resume()
+            }
+        }
+    }
+
+
+    // MARK: - Load New Photos for Selected Location in Collection View
+
 
 
 
