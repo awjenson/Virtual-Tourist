@@ -6,10 +6,6 @@
 //  Copyright © 2017 Andrew Jenson. All rights reserved.
 //
 
-// Sources:
-// Drop a pin in a map view: https://codepad.co/snippet/JgYdAoXd
-// Core Data: https://www.udemy.com/ios-11-app-development-bootcamp/learn/v4/t/lecture/8790828?start=0
-
 import UIKit
 import MapKit
 import CoreData
@@ -98,7 +94,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
             // pin.coordinate created in initialization inside Pin+CoreDataClass file
             annotation.coordinate = pin.coordinate
             mapView.addAnnotation(annotation)
-
         }
     }
 
@@ -197,7 +192,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
                                 // Save image URL String to the "Photo" Entity
                                 photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
                                 photoCoreData?.pin = newPin
-
                             }
                         }
                     }
@@ -250,7 +244,6 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
                             self.mapView.removeAnnotation(annotation!)
                             print("Deleted selected pin")
                         }
-
                     } else {
                         // Not in edit mode, so segue
                         // perform segue to next VC
@@ -284,6 +277,7 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
         }
     }
 
+
     // MARK: - IBActions
 
     @IBAction func editButtonTapped(_ sender: UIBarButtonItem) {
@@ -300,32 +294,5 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
             editModeLabelButton.isHidden = true
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
-
-
-
-
-
-
-
-
-
-
 

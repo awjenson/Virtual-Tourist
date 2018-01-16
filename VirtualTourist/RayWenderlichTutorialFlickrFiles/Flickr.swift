@@ -5,12 +5,8 @@
 //  Created by Andrew Jenson on 12/12/17.
 //  Copyright © 2017 Andrew Jenson. All rights reserved.
 //
-// Sources:
-// Core Data: https://www.raywenderlich.com/173972/getting-started-with-core-data-tutorial-2
-// Core Data: https://www.udemy.com/ios-11-app-development-bootcamp/learn/v4/t/lecture/8790828?start=0
 
 import UIKit
-
 
 class Flickr {
 
@@ -103,8 +99,22 @@ class Flickr {
             // Then call another taskForGETRandomPage with the random page in the URL
             // Then parse the JSON to display the photos from the random page
 
+            /* Random Page - According to a Udacity Forum post:
+
+             Flickr has a limit of 4,000 photos per query. For instance, I'm running the search requesting 21 photos per page, if you divide 4000 by 21 you get 191 which is the max page number that will fetch a distinct set of photos, any page number greater than 192 will return the exact same set of photos. So, if you limit your random function to 191 you should get a page number that will show different photos.
+
+             Source: https://discussions.udacity.com/t/virtualtourist-why-is-flickr-returning-the-same-photos/30977/11
+            */
+
             // pick a random page!
-            let randomPage = Int(arc4random_uniform(UInt32(totalPages))) + 1
+
+            let randomPage: Int
+
+            if totalPages > 190 {
+                randomPage = Int(arc4random_uniform(UInt32(190))) + 1
+            } else {
+                randomPage = Int(arc4random_uniform(UInt32(totalPages))) + 1
+            }
 
             print("Total pages: \(totalPages)")
             print("Random page: \(randomPage)")
@@ -340,37 +350,12 @@ class Flickr {
     }
 
 
-    // MARK: - Load New Photos for Selected Location in Collection View
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // MARK: - HELPERS
 
     // MARK: Help for adding latitude and longitude to URL
 
     private func pinCoordinatesBBoxString(lat latitude: Double, long longitude: Double) -> String {
         // ensure bbox is bounded by minimum and maximums
-//        let latitude = Constants.SelectedPin.latitude
-//        let longitude = Constants.SelectedPin.longitude
 
         let minimumLon = max(longitude - Constants.Flickr.SearchBBoxHalfWidth, Constants.Flickr.SearchLonRange.0)
         let minimumLat = max(latitude - Constants.Flickr.SearchBBoxHalfHeight, Constants.Flickr.SearchLatRange.0)
@@ -379,7 +364,6 @@ class Flickr {
 
         print("BBoxString: \(minimumLon),\(minimumLat),\(maximumLon),\(maximumLat)")
         return "\(minimumLon),\(minimumLat),\(maximumLon),\(maximumLat)"
-
     }
 
     // MARK: - Helper for Creating a URL from Parameters
@@ -421,13 +405,6 @@ class Flickr {
 
         return components.url!
     }
-
 }
-
-
-
-
-
-
 
 

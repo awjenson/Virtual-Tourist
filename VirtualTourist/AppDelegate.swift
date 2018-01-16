@@ -32,12 +32,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
-        
-
-
-        // Start Autosaving based on code from CoolNotes App (every 60 seconds)
-
-
         return true
     }
 
@@ -46,8 +40,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
 
         // Placement of Save code is based instructions provided in CoolNotes' lesson 10-SaveOnAppTransition.
-
-
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
@@ -55,7 +47,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
 
         // Placement of Save code is based instructions provided in CoolNotes' lesson 10-SaveOnAppTransition.
-
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {

@@ -6,25 +6,9 @@
 //  Copyright © 2017 Andrew Jenson. All rights reserved.
 //
 
-// Source:
-// https://guides.codepath.com/ios/Using-UICollectionView
-// https://www.journaldev.com/10678/ios-uicollectionview-example-tutorial
-
-
 import UIKit
 import MapKit
 import CoreData
-
-/* PhotoAlbumViewController conforms to multiple protocols (see below):
-    (1) UICollectionViewDelegate,
-    (2) UICollectionViewDataSource,
-    (3) UICollectionViewDelegateFlowLayout,
-    (4) NSFetchedResultsControllerDelegate,
-    (5) MKMapViewDelegate
- */
-
-
-// See CoreDataViewController for Collection View Methods
 
 class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
 
@@ -33,11 +17,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var collectionView: UICollectionView!
 
-
     // MARK: - Properties
     fileprivate let flickr = Flickr()
-//    fileprivate var searches = [FlickrSearchResults]()
-
 
     // Collection View Flow 
     let itemsPerRow: CGFloat = 3
@@ -68,15 +49,12 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         setupMapAndDropPin()
 
         // Core Data setup for select Pin/Photos
-//        setupFetchResultWithPredicateAndFetchResultController()
         fetchPhotos()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
 
-        // Fetch photos from selected pin
-//        photos = photosFetchRequest()
     }
 
 
@@ -116,7 +94,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         }
 
         if let data = fetchedResultController.fetchedObjects, data.count > 0 {
-            print("photos from core data fetched: \(data)")
+
             // save data to photos property
             photos = data
             self.collectionView.reloadData()
@@ -131,8 +109,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
         loadNewPhotosAndSaveToCoreData()
         collectionView.reloadData()
-
-
     }
 
 
@@ -146,10 +122,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
 
     func photosFetchRequest() -> [Photo] {
-
         do {
             return try context.fetch(fetchRequest) as! [Photo]
-
         } catch {
             print("There was an error fetching the photos from the selected pin")
             return [Photo]()
@@ -199,7 +173,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
             cell.activityIndicator.stopAnimating()
 
         } else {
-            print("cellForItemAt: We should enter here after clicking the Refresh Images Button to get image URLs, now we need to convert the 20 image URLs to 20 NSData objects that will convert into 20 Collection View Images")
+            // We should enter here after clicking the Refresh Images Button to get image URLs, now we need to convert the 20 image URLs to 20 NSData objects that will convert into 20 Collection View Images"
 
             // Display default image and start animating
             cell.imageView.image = UIImage(named: "defaultImage")
@@ -224,7 +198,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                         // Display new images in Collection View
                         cell.activityIndicator.stopAnimating()
                         cell.imageView.image = image
-                        print("cellForItemAt: Did we get here?")
                     })
             })
         }
@@ -311,29 +284,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
                 // save new url strings to stack
                 delegate.stack.save()
 
-
-//                print("recognizeLongPress(): Get photos for selected pin.")
-//
-//                // **** Core Data: Add web URLs and Pin(s) only at this point...
-//                if photoCoreData == nil {
-//                    for imageUrlString in arrayOfImageUrlStrings! {
-//                        if let entity = NSEntityDescription.entity(forEntityName: "Photo", in: context) {
-//                            photoCoreData = Photo(entity: entity, insertInto: context)
-//
-//                            // Save image URL String to the "Photo" Entity
-//                            photoCoreData?.imageURL = imageUrlString[Constants.FlickrParameterValues.MediumURL] as? String
-//                            photoCoreData?.pin = self.pinSelected
-//                        }
-//                    }
-//                }
-//
-//                print("photoCoreData?.pin: \(String(describing: photoCoreData?.pin!))")
-//                print("Flickr Photo URL String Download Complete, save context")
-//                // Rubric: When pins are dropped on the map, the pins are persisted as Pin instances in Core Data and the context is saved.
-//                delegate.stack.save()
-//
-//                // Photo URL Strings uploaded from flickr, reload collection view in order to trigger cellForRowAt in order to take new URL Strings and convert them to NS Data objects to be used to display 20 UIImages.
-
                 print("loadMoreUrlStringsForPhotos(): Photos updated, re-call fetchPhotos() to update collection view")
                 self.fetchPhotos()
 
@@ -363,14 +313,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     func loadNewPhotosAndSaveToCoreData() {
 
         // First, delete existing photos
-//        deleteAllPhotos()
-
-//        for photo in photos {
-//            // delete all photos from Core Data
-//            context.delete(photo)
-//        }
-
         photos.removeAll()
+
         // Save Core Data after all photos have been deleted
         delegate.stack.save()
         // Flick API Network Request
@@ -496,17 +440,4 @@ extension PhotoAlbumViewController: UICollectionViewDelegateFlowLayout {
         return sectionInsets.left
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
