@@ -10,6 +10,11 @@ import UIKit
 import MapKit
 import CoreData
 
+/* Two Extensions are below this class in this file:
+ 1. MKMapViewDelegate
+ 2. UICollectionViewDelegateFlowLayout
+*/
+
 class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
 
     // MARK: - Outlets
@@ -32,7 +37,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     var pinSelected: Pin? = nil
 
     // Photos
-    var photos: [Photo] = [Photo]() // Photo array
+    // Initalize a Photo array that contain properties (image and imageURL). We will load data into this blank array from the fetchedResultController.
+    var photos: [Photo] = [Photo]()
     var selectedIndexPath = [IndexPath]()
 
 
@@ -58,9 +64,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
     }
 
 
-
-
-    // MARK: - Methods
+    // MARK: - Map Methods
 
     // Drop a pin at selected location
     // Needs to display selected Pin (via passing data with segue)
@@ -70,64 +74,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         let span = MKCoordinateSpanMake(0.5, 0.5)
         let region = MKCoordinateRegion(center: pinSelected!.coordinate, span: span)
         mapView.setRegion(region, animated: true)
-    }
-
-    func fetchPhotos() {
-
-        // Check if photos from the selected pin are in Core Data
-        // fetchRequest -> Photo, pin (if photos exist on selected pin)
-        // reload collectionView
-        // If not, then call Flickr API Network Request
-
-        let fetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
-        fetchRequest.sortDescriptors = []
-        // "pin" is located in DataModel.xcdatamodelId > Photo Entity > Relationships
-        fetchRequest.predicate = NSPredicate(format: "pin = %@", pinSelected!)
-        let fetchedResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
-
-        do {
-            try fetchedResultController.performFetch()
-        } catch {
-            let fetchError = error as NSError
-            print("Unable to Perform Fetch Request")
-            print("\(fetchError), \(fetchError.localizedDescription)")
-        }
-
-        if let data = fetchedResultController.fetchedObjects, data.count > 0 {
-
-            // save data to photos property
-            photos = data
-            self.collectionView.reloadData()
-        } else {
-            // No photo data, call a new flickr API network request
-            getPhotosFromFlickr(pinSelected!)
-        }
-
-    }
-
-    func getPhotosFromFlickr(_ pinSelected: Pin) {
-
-        loadNewPhotosAndSaveToCoreData()
-        collectionView.reloadData()
-    }
-
-
-    // Setup FetchResult, Predicate, and FetchResultController
-    func setupFetchResultWithPredicateAndFetchResultController() {
-
-        // not necessary to sort photos, but I did it anyway since this is what Udacity's Cool Notes app did.
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
-        fetchRequest.predicate = NSPredicate(format: "pin = %@", self.pinSelected!)
-    }
-
-
-    func photosFetchRequest() -> [Photo] {
-        do {
-            return try context.fetch(fetchRequest) as! [Photo]
-        } catch {
-            print("There was an error fetching the photos from the selected pin")
-            return [Photo]()
-        }
     }
 
 
@@ -158,6 +104,8 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: "FlickrCell", for: indexPath) as! PhotoAlbumCollectionViewCell
 
+        // set 'photo' to 'indexPath.row' which is the current item object that is selected.
+        // creating the 'photo' property reduces the need to type photos[indexPath.row] multiple times.
         let photo = photos[indexPath.row]
         let photoUrlString = photo.imageURL
         cell.imageView.image = UIImage(named: "defaultImage")
@@ -212,32 +160,92 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         photos.remove(at: indexPath.row)
         context.delete(photo)
         delegate.stack.save()
+        // reload collection view everytime an item is selected
         collectionView.reloadData()
     }
 
+    func removeSelectedPhotos() {
+        if selectedIndexPath.count > 0 {
+            for indexPath in selectedIndexPath {
+                let photo = photos[indexPath.row]
+                context.delete(photo)
+                self.photos.remove(at: indexPath.row)
+                self.collectionView.deleteItems(at: [indexPath as IndexPath])
+                print("photo at row \(indexPath.row) deleted from Core Data and Collection View")
+            }
+            delegate.stack.save()
+        }
+        selectedIndexPath = [IndexPath]()
+    }
 
-    // MARK: - IB Action Methods
 
-    @IBAction func refreshImagesButtonTapped(_ sender: UIButton) {
+    // MARK: - Core Data (And Flickr API) Methods
 
-        print("Refresh Button Tapped.")
+    func fetchPhotos() {
 
-        // First, delete all existing photos from context
-        for photo in photos {
-            context.delete(photo)
+        // Check if photos [Photo] (Photo array) data exist for the selected pin in Core Data
+        // fetchRequest -> Photo, pin (if photos exist on selected pin)
+        // reload collectionView
+        // If not, then call Flickr API Network Request
+
+        let fetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
+        fetchRequest.sortDescriptors = []
+        // "pin" is located in DataModel.xcdatamodelId > Photo Entity > Relationships
+        fetchRequest.predicate = NSPredicate(format: "pin = %@", pinSelected!)
+        let fetchedResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
+
+        do {
+            try fetchedResultController.performFetch()
+        } catch {
+            let fetchError = error as NSError
+            print("Unable to Perform Fetch Request")
+            print("\(fetchError), \(fetchError.localizedDescription)")
         }
 
-        // Start over with an empty array of type Photo
-        photos = [Photo]()
+        if let data = fetchedResultController.fetchedObjects, data.count > 0 {
 
-        collectionView.reloadData()
+            // save (add) data to photos property created above
+            photos = data
+            self.collectionView.reloadData()
+        } else {
+            // No photo data, call a new flickr API network request
+            getPhotosFromFlickr(pinSelected!)
+        }
 
-        // load new photos
-        loadMoreUrlStringsForPhotos()
     }
 
+    // This method is called in loadNewPhotosAndSaveToCoreData() in order to delete existing photos before downloading new photos.
+    func deleteAllPhotos() {
+        print("Deleting all photos")
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
+        fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
 
-    // MARK: Fetch Photos
+        do {
+            let photos = try context.fetch(fetchRequest) as! [Photo]
+            for photo in photos {
+                // delete NSManagedObject
+                context.delete(photo)
+            }
+        } catch {
+            print("deleteAllPhotos: Error deleting photo")
+        }
+    }
+
+    func getPhotosFromFlickr(_ pinSelected: Pin) {
+
+        loadNewPhotosAndSaveToCoreData()
+        collectionView.reloadData()
+    }
+
+    // Setup FetchResult, Predicate, and FetchResultController
+    func setupFetchResultWithPredicateAndFetchResultController() {
+
+        // not necessary to sort photos, but I did it anyway since this is what Udacity's Cool Notes app did.
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "imageURL", ascending: true)]
+        fetchRequest.predicate = NSPredicate(format: "pin = %@", self.pinSelected!)
+    }
+
+    // Fetch Photos (Includes Flickr API Network Request)
     func loadMoreUrlStringsForPhotos() {
 
         var photoCoreData: Photo?
@@ -292,23 +300,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         } // End of Flickr Closure
 
     }
-
-
-    func removeSelectedPhotos() {
-        if selectedIndexPath.count > 0 {
-            for indexPath in selectedIndexPath {
-                let photo = photos[indexPath.row]
-                context.delete(photo)
-                self.photos.remove(at: indexPath.row)
-                self.collectionView.deleteItems(at: [indexPath as IndexPath])
-                print("photo at row \(indexPath.row) deleted from Core Data and Collection View")
-            }
-            delegate.stack.save()
-        }
-        selectedIndexPath = [IndexPath]()
-    }
-
-    // MARK: - Methods
 
     func loadNewPhotosAndSaveToCoreData() {
 
@@ -371,32 +362,34 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
                 print("Inside func loadNewPhotosAndSaveToCoreData(): reload complete, refresh collection view")
                 print("Inside func loadNewPhotosAndSaveToCoreData(): Are photo.imageURL (String) nil?: \(String(describing: photoCoreData?.imageURL))")
-            }
-
-
+            } // performUIUpdatesOnMain
             return
         } // End of Flickr Closure
     }
 
 
-    // This method is called in loadNewPhotosAndSaveToCoreData() in order to delete existing photos before downloading new photos.
-    func deleteAllPhotos() {
-        print("Deleting all photos")
-        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Photo")
-        fetchRequest.predicate = NSPredicate(format: "pin == %@", self.pinSelected!)
+    // MARK: - IB Action Methods
 
-        do {
-            let photos = try context.fetch(fetchRequest) as! [Photo]
-            for photo in photos {
-                // delete NSManagedObject
-                context.delete(photo)
-            }
-        } catch {
-                print("deleteAllPhotos: Error deleting photo")
+    @IBAction func refreshImagesButtonTapped(_ sender: UIButton) {
+
+        print("Refresh Button Tapped.")
+
+        // First, delete all existing photos from context
+        for photo in photos {
+            context.delete(photo)
         }
+
+        // Start over with an empty array of type Photo
+        photos = [Photo]()
+
+        collectionView.reloadData()
+
+        // load new photos
+        loadMoreUrlStringsForPhotos()
     }
 
 } // *** End of PhotoAlbumViewController Class ***
+
 
 
 extension PhotoAlbumViewController: MKMapViewDelegate {
