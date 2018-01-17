@@ -64,12 +64,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 
-
-
-
-
-
-    // MARK: - Core Data stack
+    // MARK: - Core Data Stack
 
     // When we create a variable and declare it as lazy, then it only gets loaded up with a value at the time point when it is needed. i.e. when we try to use the variable. This saves on memory.
     // PersistentContainer is where we are going to store all of our data in a SQLite database.

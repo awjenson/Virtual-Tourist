@@ -10,7 +10,7 @@ import UIKit
 import MapKit
 import CoreData
 
-/* Two Extensions are below this class in this file:
+/* Two Extensions are below this class (at the bottom of this file):
  1. MKMapViewDelegate
  2. UICollectionViewDelegateFlowLayout
 */
@@ -392,6 +392,7 @@ extension PhotoAlbumViewController: MKMapViewDelegate {
 }
 
 // ******************************************
+
 // MARK: - UICollectionViewDelegateFlowLayout
 extension PhotoAlbumViewController: UICollectionViewDelegateFlowLayout {
     // From Ray Wenderlich Tutorials on Collection Views...

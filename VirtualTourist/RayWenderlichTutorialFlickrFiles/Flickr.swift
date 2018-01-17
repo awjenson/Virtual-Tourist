@@ -10,7 +10,7 @@ import UIKit
 
 class Flickr {
 
-    // MARK: Shared Instance
+    // MARK: - Shared Instance
 
     class func sharedInstance() -> Flickr {
         struct Singleton {
@@ -19,10 +19,9 @@ class Flickr {
         return Singleton.sharedInstance
     }
 
-    // MARK: - Properties
+    // MARK: - Flickr API (URL Set-up)
 
-
-    // MARK: Flickr API (URL Set-up)
+    // MARK: searchFlickrForCoordinates
 
     // Step 1 - CREATE URL (to find a random page)
     func searchFlickrForCoordinates(pin: Pin,completionSearchFlickrForCoordinates: @escaping (_ arrayOfImageUrlStrings: [[String: AnyObject]]?, _ errorString : String?) -> Void) {
@@ -39,7 +38,6 @@ class Flickr {
             Constants.FlickrParameterKeys.NoJSONCallback: Constants.FlickrParameterValues.DisableJSONCallback,
             Constants.FlickrParameterKeys.PhotosPerPage: Constants.FlickrParameterValues.PhotosPerPage
         ]
-
 
         // STEP 2: SEND URL to FLICKR API (to find a random page)
         // Call taskForGETRandomPage and pass in parameters for URL Request to get Random Page
@@ -94,8 +92,7 @@ class Flickr {
                 return
             }
 
-
-            // Pick a random page
+            // Pick a Random Page
             // Then call another taskForGETRandomPage with the random page in the URL
             // Then parse the JSON to display the photos from the random page
 
@@ -190,13 +187,14 @@ class Flickr {
     } // searchFlickrForCoordinates
 
 
-
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 
 
 
     // MARK: - Flickr API Request
+
+    // MARK: taskForGETRandomPage
 
     // First GET Request: Used to Retrieve a Random Page (In Prep for Getting Photos)
     private func taskForGETRandomPage(_ methodParameters: [String: AnyObject], completionGETRandomPageToParseJSON:@escaping (_ data: Data?, _ error: NSError?) -> Void) {
@@ -244,8 +242,7 @@ class Flickr {
     } // End taskForGETRandomPage
 
 
-
-
+    // MARK: taskForGETPhotosFromRandomPage
     // Second GET Request: Used to Retrieve Photos from the Random Page
 
     private func taskForGETPhotosFromRandomPage(_ pin: Pin, _ methodParameters: [String: AnyObject], withPageNumber: Int, completionGETPhotosFromRandomPageToParseJSON:@escaping (_ data: Data?, _ error: NSError?) -> Void) {
@@ -306,6 +303,7 @@ class Flickr {
         task.resume()
     }
 
+    // MARK: getDataFromUrlString
 
     // *** TASK FOR GET IMAGE DATA FROM URL STRING (PHOTOS) ***
 
@@ -331,7 +329,7 @@ class Flickr {
     }
 
 
-    // Load photos from URLs
+    // MARK: Load Photos from URLs
     func loadNewPhoto(_ indexPath: IndexPath, photosArray: [Photo], handler: @escaping (_ image: UIImage?, _ data: Data?, _ error: String) -> Void) {
 
         let session = URLSession.shared
@@ -411,6 +409,5 @@ class Flickr {
 
         return components.url!
     }
+
 }
-
-

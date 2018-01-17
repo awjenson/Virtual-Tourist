@@ -55,7 +55,7 @@ struct Constants {
         static let GalleryID = "5704-72157622566655097" // ??? It looks like this is never used
         static let MediumURL = "url_m"
         static let UseSafeSearch = "1"
-        static let PhotosPerPage = "21"   // reduces the number of images downloaded to 21
+        static let PhotosPerPage = "21" // reduces the number of images downloaded to 21
     }
 
     // MARK: Flickr Response Keys
