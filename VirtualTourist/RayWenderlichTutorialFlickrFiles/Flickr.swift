@@ -104,6 +104,12 @@ class Flickr {
              Flickr has a limit of 4,000 photos per query. For instance, I'm running the search requesting 21 photos per page, if you divide 4000 by 21 you get 191 which is the max page number that will fetch a distinct set of photos, any page number greater than 192 will return the exact same set of photos. So, if you limit your random function to 191 you should get a page number that will show different photos.
 
              Source: https://discussions.udacity.com/t/virtualtourist-why-is-flickr-returning-the-same-photos/30977/11
+
+             Similar, Keep in mind that Flickr can return no more than 4000 images per request. The number of pages that we can expect results is determined by this value. To really refresh the album get a random page from:
+
+             min(pages,4000/per_page)
+
+             Source: Udacity Reviewer
             */
 
             // pick a random page!

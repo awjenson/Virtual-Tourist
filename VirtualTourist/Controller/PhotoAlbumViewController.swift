@@ -58,11 +58,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         fetchPhotos()
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(true)
-
-    }
-
 
     // MARK: - Map Methods
 
@@ -79,13 +74,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
     // MARK: Collection View - DataSource Protocol Methods
 
-    // 1
-    // There's one search per section, so the number of sections is the count of the searches array
-    func numberOfSections(in collectionView: UICollectionView) -> Int {
-        return 1
-    }
-
-    // 2
     // The number of items in a section is the count of the photos array from the selectedPin object (see PhotoAlbumViewController).
     func collectionView(_ collectionView: UICollectionView,
                         numberOfItemsInSection section: Int) -> Int {
@@ -95,7 +83,6 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         return photos.count
     }
 
-    //3
     // ************ This is a unique method when it comes to Core Data
     // once you have the URL for a photo you will need to download and display it inside the imageView for each cell.
     func collectionView(_ collectionView: UICollectionView,
@@ -191,6 +178,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
         let fetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
         fetchRequest.sortDescriptors = []
         // "pin" is located in DataModel.xcdatamodelId > Photo Entity > Relationships
+        // "%@" refers to pinSelected
         fetchRequest.predicate = NSPredicate(format: "pin = %@", pinSelected!)
         let fetchedResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
 
@@ -384,7 +372,7 @@ class PhotoAlbumViewController: UIViewController, UICollectionViewDataSource, UI
 
         collectionView.reloadData()
 
-        // load new photos
+        // load new photos (a new fetchRequest is called at the end of loadMoreUrlStringsForPhotos())
         loadMoreUrlStringsForPhotos()
     }
 

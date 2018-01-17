@@ -72,13 +72,9 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
         myLongPress.addTarget(self, action: #selector(MainMapViewController.recognizeLongPress(_:)))
         mapView.addGestureRecognizer(myLongPress)
 
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(true)
-
         activityIndicator.stopAnimating()
         activityIndicator.isHidden = true
+
     }
 
 
@@ -124,6 +120,18 @@ class MainMapViewController: UIViewController, MKMapViewDelegate, NSFetchedResul
     // Add a New Annotation
     // Gesture Recognizer for Dropping a Pin on Map, then Save Pin in Core Data and Run Flickr API Network Request
     @objc func recognizeLongPress(_ sender: UILongPressGestureRecognizer) {
+
+        /*
+         Comment From Udacity Reviewer:
+
+         You can support dragging of the pins by utilizing all the UIGestureRecognizer states.
+
+         Do the following for each state:
+
+         On state .began , the pin will be created.
+         On .changed , At this point, you update the first pin coordinates to change the position of the pin
+         On .ended , In this state the user has lifted a finger and you are free to persist the pin.
+         */
 
         if sender.state != UIGestureRecognizerState.began {
             return
